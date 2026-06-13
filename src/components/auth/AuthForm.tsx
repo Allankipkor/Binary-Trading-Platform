@@ -33,7 +33,14 @@ export function AuthForm({ mode }: AuthFormProps) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password, name: name || undefined, phone: phone || undefined }),
         });
-        const data = await res.json();
+        const text = await res.text();
+
+let data;
+try {
+  data = JSON.parse(text);
+} catch {
+  throw new Error("Server did not return valid JSON");
+}
         if (!res.ok) throw new Error(data.error ?? "Registration failed");
       }
 
