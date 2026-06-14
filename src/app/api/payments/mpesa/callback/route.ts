@@ -1,84 +1,61 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-interface MpesaCallbackBody {
-  Body?: {
-    stkCallback?: {
-      MerchantRequestID?: string;
-      CheckoutRequestID?: string;
-      ResultCode?: number;
-      ResultDesc?: string;
-      CallbackMetadata?: {
-        Item?: Array<{ Name: string; Value?: string | number }>;
-      };
-    };
-  };
-}
-
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as MpesaCallbackBody;
-    const callback = body.Body?.stkCallback;
+    const body = await req.json();
 
-    if (!callback) {
-      return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" });
+    if (body?.type !== "PAYMENT_SUCCESS") {
+      return NextResponse.json({ received: true });
     }
 
-    const { CheckoutRequestID, ResultCode, CallbackMetadata } = callback;
+    const data = body.data;
 
-    if (ResultCode !== 0) {
-      if (CheckoutRequestID) {
-        const transactions = await prisma.transaction.findMany({
-          where: { method: "mpesa", status: "pending" },
-        });
-        for (const tx of transactions) {
-          const meta = tx.metadata ? JSON.parse(tx.metadata) : {};
-          if (meta.checkoutRequestId === CheckoutRequestID) {
-            await prisma.transaction.update({
-              where: { id: tx.id },
-              data: { status: "failed" },
-            });
-          }
-        }
-      }
-      return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" });
+    if (!data?.checkoutRequestId) {
+      return NextResponse.json({ received: true });
     }
 
-    const amountItem = CallbackMetadata?.Item?.find((i) => i.Name === "Amount");
-    const mpesaReceipt = CallbackMetadata?.Item?.find(
-      (i) => i.Name === "MpesaReceiptNumber"
-    )?.Value;
-
-    const transactions = await prisma.transaction.findMany({
-      where: { method: "mpesa", status: "pending" },
+    const tx = await prisma.transaction.findFirst({
+      where: {
+        method: "mpesa",
+        status: "pending",
+        metadata: {
+          contains: data.checkoutRequestId,
+        },
+      },
     });
 
-    for (const tx of transactions) {
-      const meta = tx.metadata ? JSON.parse(tx.metadata) : {};
-      if (meta.checkoutRequestId === CheckoutRequestID) {
-        await prisma.$transaction([
-          prisma.transaction.update({
-            where: { id: tx.id },
-            data: {
-              status: "completed",
-              metadata: JSON.stringify({
-                ...meta,
-                mpesaReceipt,
-                mpesaAmount: amountItem?.Value,
-              }),
-            },
-          }),
-          prisma.user.update({
-            where: { id: tx.userId },
-            data: { balance: { increment: tx.amount } },
-          }),
-        ]);
-        break;
-      }
+    if (!tx) return NextResponse.json({ received: true });
+
+    if (tx.status === "completed") {
+      return NextResponse.json({ received: true });
     }
 
-    return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" });
+    await prisma.$transaction([
+      prisma.transaction.update({
+        where: { id: tx.id },
+        data: {
+          status: "completed",
+          metadata: JSON.stringify({
+            ...(tx.metadata ? JSON.parse(tx.metadata) : {}),
+            mpesaReceipt: data.mpesaReceipt,
+            mpesaAmount: data.amount,
+            phoneNumber: data.phoneNumber,
+            paidAt: data.paidAt,
+          }),
+        },
+      }),
+
+      prisma.user.update({
+        where: { id: tx.userId },
+        data: {
+          balance: { increment: tx.amount },
+        },
+      }),
+    ]);
+
+    return NextResponse.json({ received: true });
   } catch {
-    return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" });
+    return NextResponse.json({ received: true });
   }
 }
