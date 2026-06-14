@@ -427,6 +427,26 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
       <div className="flex lg:hidden flex-1 flex-col overflow-hidden min-h-0">
         {mobileTab === "trade" && (
           <>
+            {/* Contract type tabs — above chart like TagBinary */}
+            <div className="flex border-b border-white/[0.07] bg-[#13161e] shrink-0">
+              {(["Matches/Differs", "Even/Odd", "Over/Under"] as const).map((t) => {
+                const mapped = t === "Matches/Differs" ? "Match/Differ" : t;
+                const isActive = contractType === mapped || (t === "Matches/Differs" && contractType === "Match/Differ");
+                return (
+                  <button
+                    key={t}
+                    onClick={() => setContractType(mapped as ContractType)}
+                    className={`flex-1 py-2.5 text-[11px] font-semibold border-b-2 transition touch-target ${
+                      isActive
+                        ? "border-[#3B82F6] text-white"
+                        : "border-transparent text-gray-500"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                );
+              })}
+            </div>
             <ChartToolbar
               selectedAsset={selectedAsset}
               assetDropdown={assetDropdown}
@@ -439,11 +459,11 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
             />
             <div
               ref={chartContainerRef}
-              className="h-[28vh] min-h-[140px] max-h-[200px] relative bg-[#0f1219] shrink-0"
+              className="h-[22vh] min-h-[120px] max-h-[180px] relative bg-[#0f1219] shrink-0"
             >
               <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
-              {/* Price ladder — right side like TagBinary */}
-              <div className="absolute right-0 top-0 bottom-0 w-16 flex flex-col justify-around items-end pr-1 pointer-events-none">
+              {/* Price ladder */}
+              <div className="absolute right-0 top-0 bottom-0 w-16 flex flex-col justify-around items-end pr-1.5 pointer-events-none">
                 {[2, 1, 0, -1, -2].map((offset) => {
                   const val = (price + offset * 0.35).toFixed(2);
                   const isCurrent = offset === 0;
@@ -451,9 +471,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                     <div
                       key={offset}
                       className={`text-[10px] tabular-nums font-semibold px-1.5 py-0.5 rounded ${
-                        isCurrent
-                          ? "bg-[#3B82F6] text-white"
-                          : "text-gray-400"
+                        isCurrent ? "bg-[#3B82F6] text-white" : "text-gray-400"
                       }`}
                     >
                       {val}
