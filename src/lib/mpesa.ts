@@ -59,7 +59,7 @@ export async function initiateStkPush(params: {
   const token = await getAccessToken();
   const timestamp = getTimestamp();
 const password = generatePassword(timestamp);
-const shortcode = process.env.MPESA_TILL_NUMBER ?? process.env.MPESA_SHORTCODE;
+const shortcode = process.env.MPESA_TILL_NUMBER!;
 
 if (!shortcode) {
   throw new Error("M-Pesa shortcode not configured");
@@ -76,7 +76,7 @@ if (!callbackUrl) {
     TransactionType: "CustomerBuyGoodsOnline",
     Amount: Math.ceil(params.amountKes),
     PartyA: formatPhone(params.phone),
-    PartyB: process.env.MPESA_TILL_NUMBER,
+    PartyB: shortcode,
     PhoneNumber: formatPhone(params.phone),
     CallBackURL: callbackUrl,
     AccountReference: params.accountReference?.slice(0, 12) ?? "OpenMarket",
