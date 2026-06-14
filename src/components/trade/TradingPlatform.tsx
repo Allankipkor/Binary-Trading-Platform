@@ -196,11 +196,27 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
     }
 
     const lastY = h - padding - ((price - min) / range) * (h - padding * 2);
+
+    // Dashed horizontal line tracking current price
+    ctx.beginPath();
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = "rgba(59,130,246,0.6)";
+    ctx.lineWidth = 1;
+    ctx.moveTo(padding, lastY);
+    ctx.lineTo(w - 64, lastY); // stop before price ladder
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Dot at current price
     ctx.beginPath();
     ctx.arc(w - padding, lastY, 4, 0, Math.PI * 2);
     ctx.fillStyle = color;
     ctx.fill();
-  }, [priceHistory, price, chartType]);
+
+    // Border around chart
+    ctx.strokeStyle = "rgba(255,255,255,0.06)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
 
   useEffect(() => {
     if (sessionStatus === "loading") return;
@@ -457,10 +473,11 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
               setChartType={setChartType}
               compact
             />
-            <div
-              ref={chartContainerRef}
-              className="h-[22vh] min-h-[120px] max-h-[180px] relative bg-[#0f1219] shrink-0"
-            >
+            <div className="px-2 py-2 bg-[#13161e] shrink-0">
+              <div
+                ref={chartContainerRef}
+                className="h-[22vh] min-h-[120px] max-h-[180px] relative bg-[#0f1219] shrink-0 rounded-xl border border-white/[0.08] overflow-hidden"
+              >
               <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
               {/* Price ladder */}
               <div className="absolute right-0 top-0 bottom-0 w-16 flex flex-col justify-around items-end pr-1.5 pointer-events-none">
@@ -479,6 +496,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                   );
                 })}
               </div>
+            </div>
             </div>
             <div className="flex-1 overflow-y-auto overscroll-contain bg-[#191c26] border-t border-white/[0.07]">
               <OrderPanel {...orderPanelProps} compact />
