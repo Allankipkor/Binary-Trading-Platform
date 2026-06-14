@@ -9,6 +9,7 @@ import {
   LayoutList,
   LineChart,
   LogOut,
+  Sparkles,
   TrendingUp,
   Wallet,
   X,
@@ -23,7 +24,7 @@ interface TradingPlatformProps {
   forceDemo?: boolean;
 }
 
-type MobileTab = "trade" | "positions";
+type MobileTab = "trade" | "positions" | "ai";
 
 function mapApiTrade(t: {
   id: string;
@@ -438,10 +439,28 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
             />
             <div
               ref={chartContainerRef}
-              className="h-[38vh] min-h-[160px] max-h-[280px] sm:h-[42vh] relative bg-[#0f1219] shrink-0"
+              className="h-[28vh] min-h-[140px] max-h-[200px] relative bg-[#0f1219] shrink-0"
             >
               <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
-            </div>
+              {/* Price ladder — right side like TagBinary */}
+              <div className="absolute right-0 top-0 bottom-0 w-16 flex flex-col justify-around items-end pr-1 pointer-events-none">
+                {[2, 1, 0, -1, -2].map((offset) => {
+                  const val = (price + offset * 0.35).toFixed(2);
+                  const isCurrent = offset === 0;
+                  return (
+                    <div
+                      key={offset}
+                      className={`text-[10px] tabular-nums font-semibold px-1.5 py-0.5 rounded ${
+                        isCurrent
+                          ? "bg-[#3B82F6] text-white"
+                          : "text-gray-400"
+                      }`}
+                    >
+                      {val}
+                    </div>
+                  );
+                })}
+              </div>
             <div className="flex-1 overflow-y-auto overscroll-contain bg-[#191c26] border-t border-white/[0.07]">
               <OrderPanel {...orderPanelProps} compact />
             </div>
@@ -460,6 +479,23 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
           </div>
         )}
 
+        {mobileTab === "ai" && (
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-[#191c26] px-6 text-center">
+            <div className="w-16 h-16 rounded-full bg-[#3B82F6]/10 border border-[#3B82F6]/20 flex items-center justify-center">
+              <Sparkles className="w-8 h-8 text-[#3B82F6]" />
+            </div>
+            <div>
+              <p className="text-white font-semibold text-base mb-1">AI Trading Assistant</p>
+              <p className="text-gray-400 text-xs leading-relaxed">
+                Get real-time trade signals, market analysis, and risk insights powered by AI.
+              </p>
+            </div>
+            <button className="px-5 py-2.5 rounded-xl bg-[#3B82F6] text-white text-sm font-semibold touch-target">
+              Coming soon
+            </button>
+          </div>
+        )}
+
         {/* Bottom navigation */}
         <nav className="shrink-0 flex border-t border-white/[0.07] bg-[#13161e] safe-bottom safe-x">
           <button
@@ -470,6 +506,21 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
           >
             <TrendingUp className="w-5 h-5" />
             <span className="text-[10px] font-semibold">Trade</span>
+          </button>
+          <button
+            onClick={() => setMobileTab("ai")}
+            className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 touch-target transition"
+          >
+            <div
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition ${
+                mobileTab === "ai" ? "bg-[#3B82F6]" : "bg-[#1c2030]"
+              }`}
+            >
+              <Sparkles className="w-5 h-5 text-white" />
+            </div>
+            <span className={`text-[10px] font-semibold ${mobileTab === "ai" ? "text-[#3B82F6]" : "text-gray-500"}`}>
+              AI
+            </span>
           </button>
           <button
             onClick={() => setMobileTab("positions")}
@@ -531,11 +582,21 @@ function ChartToolbar({
       <div className="relative min-w-0 flex-1 mr-2">
         <button
           onClick={() => setAssetDropdown(!assetDropdown)}
-          className="flex items-center gap-1.5 max-w-full px-2 sm:px-3 py-1.5 rounded-lg hover:bg-white/5 transition touch-target"
+          className="flex items-center gap-2 max-w-full px-2 py-1.5 rounded-lg hover:bg-white/5 transition touch-target"
         >
-          <span className="text-xs sm:text-sm font-bold truncate">
-            {compact ? selectedAsset.name.replace(" Index", "") : selectedAsset.name}
-          </span>
+          <div className="w-7 h-7 rounded-lg bg-[#3B82F6]/10 border border-[#3B82F6]/20 flex items-center justify-center shrink-0">
+            <BarChart3 className="w-3.5 h-3.5 text-[#3B82F6]" />
+          </div>
+          <div className="text-left min-w-0">
+            <div className="text-xs font-bold truncate">
+              {compact ? selectedAsset.name.replace(" Index", "") : selectedAsset.name}
+            </div>
+            <div className="text-[10px] text-emerald-400 flex items-center gap-1">
+              {price.toFixed(2)}
+              <span className="text-emerald-500">+0.41 (0.00%)</span>
+              <TrendingUp className="w-2.5 h-2.5 text-emerald-500" />
+            </div>
+          </div>
           <ChevronDown className="w-3.5 h-3.5 text-gray-400 shrink-0" />
         </button>
         {assetDropdown && (

@@ -1,8 +1,13 @@
-import { MessageCircle, Minus, Plus, TrendingDown, TrendingUp } from "lucide-react";
+"use client";
+
+import { useEffect, useState } from "react";
+import { Minus, Plus, Zap } from "lucide-react";
 import type { Asset } from "@/lib/assets";
 
 const CONTRACT_TYPES = ["Rise/Fall", "Even/Odd", "Over/Under", "Match/Differ"] as const;
 const DURATIONS = ["1 min", "2 min", "5 min", "10 min", "15 min"];
+const STAKE_PRESETS = [1, 5, 10, 25, 50, 100];
+const DIGIT_BASE = [0.0, 11.9, 10.3, 9.1, 13.8, 9.5, 12.6, 8.7, 14.2, 9.9];
 
 type ContractType = (typeof CONTRACT_TYPES)[number];
 
@@ -20,6 +25,12 @@ interface OrderPanelProps {
   compact?: boolean;
 }
 
+function generateDigitProbs(): number[] {
+  return DIGIT_BASE.map((base) =>
+    Math.max(0, Math.min(25, +(base + (Math.random() - 0.5) * 1.5).toFixed(1)))
+  );
+}
+
 export function OrderPanel({
   selectedAsset,
   contractType,
@@ -33,10 +44,99 @@ export function OrderPanel({
   onPlaceTrade,
   compact = false,
 }: OrderPanelProps) {
+  const [tradeMode, setTradeMode] = useState<"auto" | "manual">("auto");
+  const [selectedDigit, setSelectedDigit] = useState(8);
+  const [digitProbs, setDigitProbs] = useState<number[]>(DIGIT_BASE);
+
+  // Refresh digit probabilities every 2s to simulate live data
+  useEffect(() => {
+    const interval = setInterval(() => setDigitProbs(generateDigitProbs()), 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const targetProfit = stake * 20;
+  const stopLoss = +(stake * 99.9).toFixed(0);
+  const multiplier = stake >= 50 ? 3 : 2;
+  const maxDigitIdx = digitProbs.indexOf(Math.max(...digitProbs));
+
+  const showDigits = contractType !== "Rise/Fall";
+
+  const adjustStake = (delta: number) => {
+    const steps = [1, 5, 10, 25, 50, 100, 200, 500];
+    const idx = steps.findIndex((s) => s >= stake);
+    const newIdx = Math.max(0, Math.min(steps.length - 1, idx + delta));
+    onStakeChange(steps[newIdx]);
+  };
+
+  const pad = compact ? "p-3" : "p-4";
+  const divider = "border-b border-white/[0.07]";
+
+  const renderCTAButtons = () => {
+    const base =
+      "min-h-[52px] rounded-xl font-bold text-white flex items-center justify-center gap-2 text-sm transition active:scale-95 hover:opacity-90 disabled:opacity-40 touch-target";
+    if (contractType === "Rise/Fall") {
+      return (
+        <>
+          <button
+            onClick={() => onPlaceTrade("up")}
+            disabled={stake > balance}
+            className={`${base} bg-emerald-500`}
+          >
+            Rise
+          </button>
+          <button
+            onClick={() => onPlaceTrade("down")}
+            disabled={stake > balance}
+            className={`${base} bg-red-500`}
+          >
+            Fall
+          </button>
+        </>
+      );
+    }
+    if (contractType === "Even/Odd") {
+      return (
+        <>
+          <button onClick={() => onPlaceTrade("up")} disabled={stake > balance} className={`${base} bg-blue-500`}>
+            Even
+          </button>
+          <button onClick={() => onPlaceTrade("down")} disabled={stake > balance} className={`${base} bg-purple-500`}>
+            Odd
+          </button>
+        </>
+      );
+    }
+    if (contractType === "Over/Under") {
+      return (
+        <>
+          <button onClick={() => onPlaceTrade("up")} disabled={stake > balance} className={`${base} bg-cyan-500`}>
+            Over
+          </button>
+          <button onClick={() => onPlaceTrade("down")} disabled={stake > balance} className={`${base} bg-orange-500`}>
+            Under
+          </button>
+        </>
+      );
+    }
+    // Match/Differ
+    return (
+      <>
+        <button onClick={() => onPlaceTrade("up")} disabled={stake > balance} className={`${base} bg-emerald-500`}>
+          Match
+        </button>
+        <button onClick={() => onPlaceTrade("down")} disabled={stake > balance} className={`${base} bg-red-500`}>
+          Differ
+        </button>
+      </>
+    );
+  };
+
   return (
     <div className={`flex flex-col ${compact ? "" : "h-full"}`}>
-      <div className={`${compact ? "p-3" : "p-4"} border-b border-white/[0.07]`}>
-        <h3 className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-gray-500 mb-2 sm:mb-3">
+
+      {/* Contract type */}
+      <div className={`${pad} ${divider}`}>
+        <h3 className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-2">
           Contract Type
         </h3>
         <div className="grid grid-cols-2 gap-1.5">
@@ -44,9 +144,9 @@ export function OrderPanel({
             <button
               key={t}
               onClick={() => onContractTypeChange(t)}
-              className={`px-2 py-2 sm:py-2.5 rounded-lg text-[10px] sm:text-[11px] font-semibold transition touch-target ${
+              className={`px-2 py-2 rounded-lg text-[10px] font-semibold transition touch-target ${
                 contractType === t
-                  ? "bg-[#3B82F6]/20 text-[#3B82F6] border border-[#3B82F6]/30"
+                  ? "bg-[#3B82F6]/20 text-[#3B82F6] border border-[#3B82F6]/40"
                   : "bg-[#1c2030] text-gray-400 border border-white/[0.07] hover:bg-white/5"
               }`}
             >
@@ -56,8 +156,46 @@ export function OrderPanel({
         </div>
       </div>
 
-      <div className={`${compact ? "p-3" : "p-4"} border-b border-white/[0.07]`}>
-        <h3 className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-gray-500 mb-2 sm:mb-3">
+      {/* Digit probabilities — shown for all except Rise/Fall */}
+      {showDigits && (
+        <div className={`${pad} ${divider}`}>
+          <h3 className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-2">
+            Last digit prediction
+          </h3>
+          <div className="flex justify-between gap-1">
+            {digitProbs.map((pct, d) => {
+              const isSelected = d === selectedDigit;
+              const isHot = d === maxDigitIdx;
+              return (
+                <button
+                  key={d}
+                  onClick={() => setSelectedDigit(d)}
+                  className="flex flex-col items-center gap-1 flex-1 touch-target"
+                >
+                  <div
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold border-[1.5px] transition ${
+                      isSelected
+                        ? "bg-[#1e3a5f] border-[#3B82F6] text-[#60a5fa]"
+                        : isHot
+                          ? "bg-emerald-900/40 border-emerald-500 text-emerald-400"
+                          : "bg-white/[0.05] border-white/[0.08] text-gray-300"
+                    }`}
+                  >
+                    {d}
+                  </div>
+                  <span className={`text-[9px] font-medium ${isHot ? "text-emerald-400" : "text-gray-500"}`}>
+                    {pct.toFixed(1)}%
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Duration */}
+      <div className={`${pad} ${divider}`}>
+        <h3 className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-2">
           Duration
         </h3>
         <div className="flex flex-wrap gap-1.5">
@@ -65,10 +203,10 @@ export function OrderPanel({
             <button
               key={d}
               onClick={() => onDurationChange(d)}
-              className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-[11px] font-semibold transition touch-target ${
+              className={`px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition touch-target ${
                 duration === d
                   ? "bg-[#3B82F6] text-white"
-                  : "bg-[#1c2030] text-gray-400 border border-white/[0.07]"
+                  : "bg-[#1c2030] text-gray-400 border border-white/[0.07] hover:bg-white/5"
               }`}
             >
               {d}
@@ -77,78 +215,107 @@ export function OrderPanel({
         </div>
       </div>
 
-      <div className={`${compact ? "p-3" : "p-4"} border-b border-white/[0.07]`}>
-        <h3 className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-gray-500 mb-2 sm:mb-3">
-          Stake
-        </h3>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => onStakeChange(Math.max(0.1, stake - 1))}
-            className="p-2 sm:p-2.5 rounded-lg bg-[#1c2030] border border-white/[0.07] hover:bg-white/5 touch-target"
-          >
-            <Minus className="w-3.5 h-3.5" />
-          </button>
-          <div className="flex-1 text-center">
-            <div className="text-lg sm:text-xl font-bold tabular-nums">${stake.toFixed(2)}</div>
-            <div className="text-[10px] text-gray-500">
-              Payout: ${(stake * (1 + selectedAsset.payout / 100)).toFixed(2)}
-            </div>
-          </div>
-          <button
-            onClick={() => onStakeChange(stake + 1)}
-            className="p-2 sm:p-2.5 rounded-lg bg-[#1c2030] border border-white/[0.07] hover:bg-white/5 touch-target"
-          >
-            <Plus className="w-3.5 h-3.5" />
-          </button>
-        </div>
-        <div className="flex gap-1.5 mt-2">
-          {[1, 5, 10, 25].map((v) => (
+      {/* Auto / Manual */}
+      <div className={`${pad} pb-2 ${divider}`}>
+        <div className="flex bg-white/[0.05] rounded-xl p-1">
+          {(["auto", "manual"] as const).map((m) => (
             <button
-              key={v}
-              onClick={() => onStakeChange(v)}
-              className="flex-1 py-1.5 sm:py-2 rounded text-[10px] sm:text-[11px] font-medium bg-[#1c2030] text-gray-400 border border-white/[0.07] hover:bg-white/5 touch-target"
+              key={m}
+              onClick={() => setTradeMode(m)}
+              className={`flex-1 py-2 rounded-lg text-[11px] font-bold capitalize transition touch-target ${
+                tradeMode === m ? "bg-[#3B82F6] text-white" : "text-gray-400 hover:text-gray-200"
+              }`}
             >
-              ${v}
+              {m}
             </button>
           ))}
         </div>
       </div>
 
-      <div className={`${compact ? "p-3" : "p-4"} flex flex-col gap-2 ${compact ? "" : "flex-1"}`}>
-        {tradeError && <p className="text-[10px] text-rose-400 text-center">{tradeError}</p>}
-        <div className="grid grid-cols-2 gap-2">
+      {/* Stake */}
+      <div className={`${pad} ${divider}`}>
+        <h3 className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-2">
+          Stake
+        </h3>
+        <div className="flex items-center justify-between bg-white/[0.05] rounded-xl px-3 py-2.5 mb-2">
           <button
-            onClick={() => onPlaceTrade("up")}
-            disabled={stake > balance}
-            className="min-h-[48px] sm:min-h-[52px] rounded-xl font-bold text-white flex items-center justify-center gap-1.5 sm:gap-2 text-sm transition hover:opacity-90 disabled:opacity-40 touch-target"
-            style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)" }}
+            onClick={() => adjustStake(-1)}
+            className="w-8 h-8 rounded-lg bg-white/[0.07] hover:bg-white/[0.12] flex items-center justify-center transition touch-target"
           >
-            <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
-            RISE
+            <Minus className="w-4 h-4 text-gray-300" />
           </button>
+          <div className="flex items-baseline gap-1">
+            <span className="text-gray-400 text-sm">$</span>
+            <span className="text-white text-2xl font-bold tabular-nums">{stake}</span>
+          </div>
           <button
-            onClick={() => onPlaceTrade("down")}
-            disabled={stake > balance}
-            className="min-h-[48px] sm:min-h-[52px] rounded-xl font-bold text-white flex items-center justify-center gap-1.5 sm:gap-2 text-sm transition hover:opacity-90 disabled:opacity-40 touch-target"
-            style={{ background: "linear-gradient(135deg, #ef4444, #dc2626)" }}
+            onClick={() => adjustStake(1)}
+            className="w-8 h-8 rounded-lg bg-white/[0.07] hover:bg-white/[0.12] flex items-center justify-center transition touch-target"
           >
-            <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5" />
-            FALL
+            <Plus className="w-4 h-4 text-gray-300" />
           </button>
         </div>
-        <p className="text-[10px] text-center text-gray-500">
-          {selectedAsset.payout}% return on win
-        </p>
+        <div className="flex gap-1.5 flex-wrap">
+          {STAKE_PRESETS.map((s) => (
+            <button
+              key={s}
+              onClick={() => onStakeChange(s)}
+              className={`px-2.5 py-1.5 rounded-lg text-[10px] font-semibold border transition touch-target ${
+                stake === s
+                  ? "bg-[#1e3a5f] border-[#3B82F6] text-[#60a5fa]"
+                  : "border-white/[0.07] bg-white/[0.03] text-gray-400 hover:text-gray-200"
+              }`}
+            >
+              ${s}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {!compact && (
-        <div className="p-3 border-t border-white/[0.07] hidden lg:block">
-          <button className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs text-gray-400 hover:bg-white/5 transition touch-target">
-            <MessageCircle className="w-3.5 h-3.5" />
-            Live Chat
-          </button>
+      {/* Target profit / Stop loss / Multiplier */}
+      <div className={`${pad} ${divider} grid grid-cols-3 gap-2`}>
+        <div className="bg-white/[0.04] rounded-xl p-2.5">
+          <p className="text-[9px] text-gray-500 font-semibold mb-1">Target profit</p>
+          <p className="text-emerald-400 text-sm font-bold tabular-nums">
+            ${targetProfit.toLocaleString()}
+          </p>
         </div>
+        <div className="bg-white/[0.04] rounded-xl p-2.5">
+          <p className="text-[9px] text-gray-500 font-semibold mb-1">Stop loss</p>
+          <p className="text-red-400 text-sm font-bold tabular-nums">${stopLoss}</p>
+        </div>
+        <div className="bg-white/[0.04] rounded-xl p-2.5">
+          <p className="text-[9px] text-gray-500 font-semibold mb-1">Multiplier</p>
+          <p className="text-amber-400 text-sm font-bold">×{multiplier}</p>
+        </div>
+      </div>
+
+      {/* Last trades summary */}
+      <div className={`px-${compact ? "3" : "4"} py-2 ${divider} flex items-center justify-between`}>
+        <div className="flex items-center gap-1.5">
+          <Zap className="w-3 h-3 text-gray-500" />
+          <span className="text-[10px] text-gray-500">Last 22T · 19W · 3L</span>
+        </div>
+        <span className="text-[11px] font-bold text-emerald-400">+$1,297.50</span>
+      </div>
+
+      {/* Error */}
+      {tradeError && (
+        <p className="mx-4 mt-2 text-[10px] text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg px-3 py-2 text-center">
+          {tradeError}
+        </p>
       )}
+
+      {/* Payout info */}
+      <div className="px-4 pt-2 pb-1 flex justify-between text-[10px] text-gray-500">
+        <span>{selectedAsset.name.replace(" Index", "")}</span>
+        <span className="text-[#3B82F6] font-semibold">{selectedAsset.payout}% payout</span>
+      </div>
+
+      {/* CTA */}
+      <div className={`${pad} pt-1 grid grid-cols-2 gap-2 ${compact ? "" : "flex-1 items-end"}`}>
+        {renderCTAButtons()}
+      </div>
     </div>
   );
 }
