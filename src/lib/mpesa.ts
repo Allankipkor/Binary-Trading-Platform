@@ -4,7 +4,12 @@ const PROD_BASE = "https://api.safaricom.co.ke";
 function baseUrl() {
   return process.env.MPESA_ENV === "production" ? PROD_BASE : SANDBOX_BASE;
 }
-
+function getTimestamp(): string {
+  return new Date()
+    .toISOString()
+    .replace(/[^0-9]/g, "")
+    .slice(0, 14);
+}
 async function getAccessToken(): Promise<string> {
   const key = process.env.MPESA_CONSUMER_KEY;
   const secret = process.env.MPESA_CONSUMER_SECRET;
@@ -30,13 +35,9 @@ function formatPhone(phone: string): string {
   return digits;
 }
 
-function generatePassword(): string {
+function generatePassword(timestamp: string): string {
   const shortcode = process.env.MPESA_SHORTCODE ?? "";
   const passkey = process.env.MPESA_PASSKEY ?? "";
-  const timestamp = new Date()
-    .toISOString()
-    .replace(/[^0-9]/g, "")
-    .slice(0, 14);
   const str = shortcode + passkey + timestamp;
   return Buffer.from(str).toString("base64");
 }
@@ -56,27 +57,30 @@ export async function initiateStkPush(params: {
   transactionDesc: string;
 }): Promise<StkPushResult> {
   const token = await getAccessToken();
-  const timestamp = new Date()
-    .toISOString()
-    .replace(/[^0-9]/g, "")
-    .slice(0, 14);
-  const password = generatePassword();
-  const shortcode = process.env.MPESA_SHORTCODE ?? "174379";
-  const callbackUrl =
-    process.env.MPESA_CALLBACK_URL ?? "http://localhost:3000/api/payments/mpesa/callback";
+  const timestamp = getTimestamp();
+const password = generatePassword(timestamp);
+const shortcode = process.env.MPESA_TILL_NUMBER ?? process.env.MPESA_SHORTCODE;
 
+if (!shortcode) {
+  throw new Error("M-Pesa shortcode not configured");
+}
+const callbackUrl = process.env.MPESA_CALLBACK_URL;
+
+if (!callbackUrl) {
+  throw new Error("MPESA_CALLBACK_URL not configured");
+}
   const body = {
     BusinessShortCode: shortcode,
     Password: password,
     Timestamp: timestamp,
-    TransactionType: "CustomerPayBillOnline",
+    TransactionType: "CustomerBuyGoodsOnline",
     Amount: Math.ceil(params.amountKes),
     PartyA: formatPhone(params.phone),
-    PartyB: shortcode,
+    PartyB: process.env.MPESA_TILL_NUMBER,
     PhoneNumber: formatPhone(params.phone),
     CallBackURL: callbackUrl,
-    AccountReference: params.accountReference.slice(0, 12),
-    TransactionDesc: params.transactionDesc.slice(0, 13),
+    AccountReference: params.accountReference?.slice(0, 12) ?? "OpenMarket",
+    TransactionDesc: params.transactionDesc?.slice(0, 13) ?? "Deposit",
   };
 
   const res = await fetch(`${baseUrl()}/mpesa/stkpush/v1/processrequest`, {
