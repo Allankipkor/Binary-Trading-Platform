@@ -15,8 +15,8 @@ export interface Position {
 
 interface PositionsPanelProps {
   positions: Position[];
-  closedTab: boolean;
-  onTabChange: (closed: boolean) => void;
+  closedTab: "won" | "lost";
+  onTabChange: (tab: "won" | "lost") => void;
   timeLeft: (expiry: number) => string;
   className?: string;
 }
