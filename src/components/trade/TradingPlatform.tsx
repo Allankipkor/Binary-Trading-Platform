@@ -14,7 +14,6 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
-import { Logo } from "../Logo";
 import { DepositModal } from "../payments/DepositModal";
 import { ASSETS, type Asset } from "@/lib/assets";
 import { PositionsPanel, type Position } from "./PositionsPanel";
@@ -60,7 +59,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
   const [contractType, setContractType] = useState<ContractType>("Rise/Fall");
   const [duration, setDuration] = useState("1 min");
   const [stake, setStake] = useState(10);
-  const [balance, setBalance] = useState(isAuthenticated ? 0 : 10000);
+  const [balance, setBalance] = useState(0);
   const [positions, setPositions] = useState<Position[]>([]);
   const [tradeError, setTradeError] = useState("");
   const [price, setPrice] = useState(1000);
@@ -354,7 +353,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
       <header className="shrink-0 border-b border-white/[0.07] bg-[#13161e]/95 backdrop-blur z-30">
         <div className="flex items-center justify-between px-3 sm:px-4 lg:px-6 h-14 sm:h-16 gap-2 max-w-screen-2xl mx-auto w-full">
 
-          {/* Left: hamburger + logo */}
+          {/* Left: hamburger + wordmark */}
           <div className="flex items-center gap-2 min-w-0">
             <button
               onClick={() => setNavMenuOpen(true)}
@@ -362,7 +361,9 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
             >
               <Menu className="w-5 h-5" />
             </button>
-            <Logo size="sm" />
+            <span className="text-base sm:text-lg font-extrabold tracking-tight select-none">
+              <span className="text-[#3B82F6]">OPEN</span><span className="text-white">MARKET</span>
+            </span>
           </div>
 
           {/* Right: account switcher + deposit */}
@@ -373,8 +374,8 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                 onClick={() => setAccountDropdown((v) => !v)}
                 className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-[#1c2030] border border-white/[0.07] hover:border-white/20 transition min-h-[44px]"
               >
-                {/* Flag */}
-                <span className="text-lg leading-none">🇺🇸</span>
+                {/* Flag - circular */}
+                <span className="w-8 h-8 rounded-full bg-[#1a1f35] border border-white/10 flex items-center justify-center text-base leading-none shrink-0">🇺🇸</span>
                 <div className="text-left">
                   <div className="text-xs sm:text-sm font-bold tabular-nums leading-tight">
                     ${displayBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -402,7 +403,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                       <div className="text-left flex-1 min-w-0">
                         <div className="text-sm font-semibold text-white">Real Account</div>
                         <div className="flex items-center gap-1 text-xs text-gray-400">
-                          <span>🇺🇸</span>
+                          <span className="w-4 h-4 rounded-full bg-[#1a1f35] flex items-center justify-center text-[10px] leading-none">🇺🇸</span>
                           <span className="tabular-nums">
                             ${balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
@@ -426,7 +427,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                       <div className="text-left flex-1 min-w-0">
                         <div className="text-sm font-semibold text-white">Demo Account</div>
                         <div className="flex items-center gap-1 text-xs text-gray-400">
-                          <span>🇺🇸</span>
+                          <span className="w-4 h-4 rounded-full bg-[#1a1f35] flex items-center justify-center text-[10px] leading-none">🇺🇸</span>
                           <span className="tabular-nums">
                             ${demoBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
@@ -472,7 +473,9 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
           <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setNavMenuOpen(false)} />
           <aside className="fixed left-0 top-0 bottom-0 w-72 bg-[#13161e] border-r border-white/[0.07] z-50 flex flex-col">
             <div className="flex items-center justify-between px-4 h-16 border-b border-white/[0.07]">
-              <Logo size="sm" />
+              <span className="text-base font-extrabold tracking-tight select-none">
+                <span className="text-[#3B82F6]">OPEN</span><span className="text-white">MARKET</span>
+              </span>
               <button
                 onClick={() => setNavMenuOpen(false)}
                 className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5"
