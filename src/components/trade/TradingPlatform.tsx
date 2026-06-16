@@ -9,9 +9,9 @@ import {
   LayoutList,
   LineChart,
   LogOut,
+  Menu,
   Sparkles,
   TrendingUp,
-  Wallet,
   X,
 } from "lucide-react";
 import { Logo } from "../Logo";
@@ -70,6 +70,12 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
   const [assetDropdown, setAssetDropdown] = useState(false);
   const [depositOpen, setDepositOpen] = useState(false);
   const [closedTab, setClosedTab] = useState<"won" | "lost">("won");
+  const [accountMode, setAccountMode] = useState<"real" | "demo">("real");
+  const [accountDropdown, setAccountDropdown] = useState(false);
+  const [navMenuOpen, setNavMenuOpen] = useState(false);
+
+  const demoBalance = 1000;
+  const displayBalance = accountMode === "real" ? balance : demoBalance;
   const [timeLeft, setTimeLeft] = useState<Record<string, number>>({});
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -345,58 +351,175 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
     <div className="h-screen bg-[#13161e] text-white flex flex-col overflow-hidden">
 
       {/* ── Header ── */}
-      <header className="shrink-0 border-b border-white/[0.07] bg-[#13161e]/95 backdrop-blur z-20">
-        <div className="flex items-center justify-between px-3 sm:px-4 lg:px-6 h-12 sm:h-14 gap-2 max-w-screen-2xl mx-auto w-full">
+      <header className="shrink-0 border-b border-white/[0.07] bg-[#13161e]/95 backdrop-blur z-30">
+        <div className="flex items-center justify-between px-3 sm:px-4 lg:px-6 h-14 sm:h-16 gap-2 max-w-screen-2xl mx-auto w-full">
+
+          {/* Left: hamburger + logo */}
           <div className="flex items-center gap-2 min-w-0">
-            <Logo size="sm" />
-            {!isAuthenticated && (
-              <span className="text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-semibold shrink-0">
-                DEMO
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 shrink-0">
-            <div className="flex items-center gap-1 xs:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-[#1c2030] border border-white/[0.07] min-w-0">
-              <Wallet className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#3B82F6] shrink-0" />
-              <span className="text-[11px] xs:text-xs sm:text-sm font-bold tabular-nums truncate max-w-[80px] xs:max-w-none">
-                ${balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            </div>
-            {isAuthenticated ? (
-              <>
-                <button
-                  onClick={() => setDepositOpen(true)}
-                  className="px-2.5 sm:px-4 py-1.5 text-[11px] sm:text-xs font-semibold rounded-lg text-white bg-[#3B82F6] hover:bg-blue-500 transition min-h-[36px]"
-                >
-                  Deposit
-                </button>
-                <button
-                  onClick={() => signOut({ callbackUrl: "/" })}
-                  className="p-1.5 sm:p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 min-h-[36px] min-w-[36px] flex items-center justify-center"
-                  title="Sign out"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </>
-            ) : (
-              <Link
-                href="/login"
-                className="px-2.5 sm:px-4 py-1.5 text-[11px] sm:text-xs font-semibold rounded-lg text-white bg-[#3B82F6] hover:bg-blue-500 transition min-h-[36px] flex items-center"
-              >
-                Sign In
-              </Link>
-            )}
-            <Link
-              href="/"
-              className="p-1.5 sm:px-3 sm:py-1.5 text-gray-400 hover:text-white transition rounded-lg hover:bg-white/5 flex items-center gap-1 min-h-[36px] min-w-[36px] justify-center"
-              title="Exit"
+            <button
+              onClick={() => setNavMenuOpen(true)}
+              className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 min-h-[40px] min-w-[40px] flex items-center justify-center"
             >
-              <X className="w-4 h-4 sm:hidden" />
-              <span className="hidden sm:inline text-xs">Exit</span>
-            </Link>
+              <Menu className="w-5 h-5" />
+            </button>
+            <Logo size="sm" />
+          </div>
+
+          {/* Right: account switcher + deposit */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Account balance + switcher */}
+            <div className="relative">
+              <button
+                onClick={() => setAccountDropdown((v) => !v)}
+                className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-[#1c2030] border border-white/[0.07] hover:border-white/20 transition min-h-[44px]"
+              >
+                {/* Flag */}
+                <span className="text-lg leading-none">🇺🇸</span>
+                <div className="text-left">
+                  <div className="text-xs sm:text-sm font-bold tabular-nums leading-tight">
+                    ${displayBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                  <div className="text-[9px] text-gray-500 leading-tight">
+                    {accountMode === "real" ? "Real" : "Demo"}
+                  </div>
+                </div>
+                <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${accountDropdown ? "rotate-180" : ""}`} />
+              </button>
+
+              {/* Account switcher dropdown */}
+              {accountDropdown && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setAccountDropdown(false)} />
+                  <div className="absolute top-full right-0 mt-2 w-64 rounded-2xl border border-white/[0.07] bg-[#1c2030] shadow-2xl z-50 overflow-hidden">
+                    {/* Real account */}
+                    <button
+                      onClick={() => { setAccountMode("real"); setAccountDropdown(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-4 hover:bg-white/5 transition"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
+                        R
+                      </div>
+                      <div className="text-left flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-white">Real Account</div>
+                        <div className="flex items-center gap-1 text-xs text-gray-400">
+                          <span>🇺🇸</span>
+                          <span className="tabular-nums">
+                            ${balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </div>
+                      {accountMode === "real" && (
+                        <div className="w-2 h-2 rounded-full bg-[#3B82F6] shrink-0" />
+                      )}
+                    </button>
+
+                    <div className="h-px bg-white/[0.06] mx-4" />
+
+                    {/* Demo account */}
+                    <button
+                      onClick={() => { setAccountMode("demo"); setAccountDropdown(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-4 hover:bg-white/5 transition"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
+                        D
+                      </div>
+                      <div className="text-left flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-white">Demo Account</div>
+                        <div className="flex items-center gap-1 text-xs text-gray-400">
+                          <span>🇺🇸</span>
+                          <span className="tabular-nums">
+                            ${demoBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </div>
+                      {accountMode === "demo" && (
+                        <div className="w-2 h-2 rounded-full bg-[#3B82F6] shrink-0" />
+                      )}
+                    </button>
+
+                    {/* Sign out row */}
+                    {isAuthenticated && (
+                      <>
+                        <div className="h-px bg-white/[0.06] mx-4" />
+                        <button
+                          onClick={() => signOut({ callbackUrl: "/" })}
+                          className="w-full flex items-center gap-3 px-4 py-3.5 text-rose-400 hover:bg-white/5 transition"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span className="text-sm font-medium">Sign out</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Deposit button */}
+            <button
+              onClick={() => setDepositOpen(true)}
+              className="px-4 sm:px-5 py-2.5 text-xs sm:text-sm font-bold rounded-xl text-white bg-[#3B82F6] hover:bg-blue-500 transition min-h-[44px]"
+            >
+              DEPOSIT
+            </button>
           </div>
         </div>
       </header>
+
+      {/* ── Side nav drawer ── */}
+      {navMenuOpen && (
+        <>
+          <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setNavMenuOpen(false)} />
+          <aside className="fixed left-0 top-0 bottom-0 w-72 bg-[#13161e] border-r border-white/[0.07] z-50 flex flex-col">
+            <div className="flex items-center justify-between px-4 h-16 border-b border-white/[0.07]">
+              <Logo size="sm" />
+              <button
+                onClick={() => setNavMenuOpen(false)}
+                className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <nav className="flex-1 overflow-y-auto p-4 flex flex-col gap-1">
+              <Link
+                href="/"
+                onClick={() => setNavMenuOpen(false)}
+                className="flex items-center gap-3 px-3 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/5 transition text-sm font-medium"
+              >
+                <TrendingUp className="w-5 h-5 text-[#3B82F6]" />
+                Trade
+              </Link>
+              <Link
+                href="/history"
+                onClick={() => setNavMenuOpen(false)}
+                className="flex items-center gap-3 px-3 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/5 transition text-sm font-medium"
+              >
+                <LayoutList className="w-5 h-5 text-[#3B82F6]" />
+                Trade History
+              </Link>
+              <Link
+                href="/ai"
+                onClick={() => setNavMenuOpen(false)}
+                className="flex items-center gap-3 px-3 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/5 transition text-sm font-medium"
+              >
+                <Sparkles className="w-5 h-5 text-[#3B82F6]" />
+                AI Assistant
+              </Link>
+            </nav>
+            {isAuthenticated && (
+              <div className="p-4 border-t border-white/[0.07]">
+                <button
+                  onClick={() => signOut({ callbackUrl: "/" })}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-rose-400 hover:bg-white/5 transition text-sm font-medium"
+                >
+                  <LogOut className="w-5 h-5" />
+                  Sign out
+                </button>
+              </div>
+            )}
+          </aside>
+        </>
+      )}
 
       {/* ── Desktop / large tablet (md+) ── */}
       <div className="hidden md:flex flex-1 overflow-hidden min-h-0 max-w-screen-2xl mx-auto w-full">
@@ -622,10 +745,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
         </nav>
       </div>
 
-      {depositOpen && (
-        <DepositModal open={depositOpen} onClose={() => setDepositOpen(false)} onSuccess={syncFromApi} />
-
-      )}
+      <DepositModal open={depositOpen} onClose={() => setDepositOpen(false)} onSuccess={syncFromApi} />
     </div>
   );
 }
