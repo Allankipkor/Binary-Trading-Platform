@@ -94,7 +94,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
 
   useEffect(() => {
     const tickPrice = () => {
-      const res = fetch(`/api/prices?assetId=${selectedAsset.id}&tick=true`)
+      fetch(`/api/prices?assetId=${selectedAsset.id}&tick=true`)
         .then((r) => r.json())
         .then((data) => {
           if (data?.price) {
@@ -125,7 +125,6 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
     const container = chartContainerRef.current;
     if (!container) return;
     const ro = new ResizeObserver(() => {
-      // trigger redraw by forcing a state update
       setPriceHistory((h) => [...h]);
     });
     ro.observe(container);
@@ -389,7 +388,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
             )}
             <Link
               href="/"
-              className="p-1.5 sm:px-3 sm:py-1.5 text-gray-400 hover:text-white transition touch-target rounded-lg hover:bg-white/5 flex items-center gap-1"
+              className="p-1.5 sm:px-3 sm:py-1.5 text-gray-400 hover:text-white transition rounded-lg hover:bg-white/5 flex items-center gap-1 min-h-[36px] min-w-[36px] justify-center"
               title="Exit"
             >
               <X className="w-4 h-4 sm:hidden" />
@@ -399,7 +398,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
         </div>
       </header>
 
-      {/* ── Desktop / large tablet (md+): chart + order panel, positions hidden on md ── */}
+      {/* ── Desktop / large tablet (md+) ── */}
       <div className="hidden md:flex flex-1 overflow-hidden min-h-0 max-w-screen-2xl mx-auto w-full">
 
         {/* Left: Positions — only visible on lg+ */}
@@ -466,7 +465,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
             </div>
           </div>
 
-          {/* Positions row visible only on md (between mobile tabs and lg sidebar) */}
+          {/* Positions strip — md only (tablet, no sidebar) */}
           <div className="lg:hidden border-t border-white/[0.07] h-40 shrink-0 overflow-hidden bg-[#191c26]">
             <PositionsPanel
               positions={positions}
@@ -521,9 +520,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
 
             {/* Chart card */}
             <div className="px-2 sm:px-3 py-2 bg-[#13161e] shrink-0">
-              <div
-                className="h-[22vh] sm:h-[28vh] min-h-[130px] max-h-[240px] relative bg-[#0f1219] rounded-xl border border-white/[0.08] overflow-hidden"
-              >
+              <div className="h-[22vh] sm:h-[28vh] min-h-[130px] max-h-[240px] relative bg-[#0f1219] rounded-xl border border-white/[0.08] overflow-hidden">
                 <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
                 {/* Price ladder */}
                 <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-20 flex flex-col justify-around items-end pr-1.5 sm:pr-2 pointer-events-none">
@@ -588,7 +585,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
         >
           <button
             onClick={() => setMobileTab("trade")}
-            className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 sm:py-3 touch-target transition ${
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 sm:py-3 min-h-[56px] transition ${
               mobileTab === "trade" ? "text-[#3B82F6]" : "text-gray-500"
             }`}
           >
@@ -597,7 +594,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
           </button>
           <button
             onClick={() => setMobileTab("ai")}
-            className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 touch-target transition"
+            className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] transition"
           >
             <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition ${
               mobileTab === "ai" ? "bg-[#3B82F6]" : "bg-[#1c2030]"
@@ -610,7 +607,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
           </button>
           <button
             onClick={() => setMobileTab("positions")}
-            className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 sm:py-3 touch-target transition relative ${
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 sm:py-3 min-h-[56px] transition relative ${
               mobileTab === "positions" ? "text-[#3B82F6]" : "text-gray-500"
             }`}
           >
@@ -626,7 +623,8 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
       </div>
 
       {depositOpen && (
-        <DepositModal onClose={() => setDepositOpen(false)} onSuccess={syncFromApi} />
+        <DepositModal open={depositOpen} onClose={() => setDepositOpen(false)} onSuccess={syncFromApi} />
+
       )}
     </div>
   );

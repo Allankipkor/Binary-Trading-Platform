@@ -17,7 +17,7 @@ interface PositionsPanelProps {
   positions: Position[];
   closedTab: "won" | "lost";
   onTabChange: (tab: "won" | "lost") => void;
-  timeLeft: (expiry: number) => string;
+  timeLeft: Record<string, number>;
   className?: string;
 }
 
@@ -29,44 +29,76 @@ export function PositionsPanel({
   className = "",
 }: PositionsPanelProps) {
   const openPositions = positions.filter((p) => p.status === "open");
-  const closedPositions = positions.filter((p) => p.status !== "open");
-  const visible = closedTab ? closedPositions : openPositions;
+  const closedPositions = positions.filter((p) => p.status === closedTab);
+
+  // Determine which list to show: if any open positions exist show them,
+  // otherwise fall through to the closed tab view.
+  const showingOpen = openPositions.length > 0 || closedPositions.length === 0;
+  const visible = showingOpen ? openPositions : closedPositions;
+
+  const formatTimeLeft = (id: string) => {
+    const secs = timeLeft[id];
+    if (secs === undefined) return "--:--";
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
 
   return (
     <div className={`flex flex-col min-h-0 ${className}`}>
+      {/* Tab bar */}
       <div className="flex border-b border-white/[0.07] shrink-0">
         <button
-          onClick={() => onTabChange(false)}
-          className={`flex-1 py-2.5 sm:py-3 text-xs font-semibold transition touch-target ${
-            !closedTab ? "text-white border-b-2 border-[#3B82F6]" : "text-gray-500"
+          onClick={() => onTabChange("won")}
+          className={`flex-1 py-2.5 sm:py-3 text-xs font-semibold transition min-h-[44px] ${
+            showingOpen || closedTab === "won"
+              ? "text-white border-b-2 border-[#3B82F6]"
+              : "text-gray-500"
           }`}
         >
           Open ({openPositions.length})
         </button>
         <button
-          onClick={() => onTabChange(true)}
-          className={`flex-1 py-2.5 sm:py-3 text-xs font-semibold transition touch-target ${
-            closedTab ? "text-white border-b-2 border-[#3B82F6]" : "text-gray-500"
+          onClick={() => onTabChange("won")}
+          className={`flex-1 py-2.5 sm:py-3 text-xs font-semibold transition min-h-[44px] ${
+            !showingOpen && closedTab === "won"
+              ? "text-white border-b-2 border-[#3B82F6]"
+              : "text-gray-500"
           }`}
         >
-          Closed ({closedPositions.length})
+          Won
+        </button>
+        <button
+          onClick={() => onTabChange("lost")}
+          className={`flex-1 py-2.5 sm:py-3 text-xs font-semibold transition min-h-[44px] ${
+            !showingOpen && closedTab === "lost"
+              ? "text-white border-b-2 border-[#3B82F6]"
+              : "text-gray-500"
+          }`}
+        >
+          Lost
         </button>
       </div>
+
+      {/* Position list */}
       <div className="flex-1 overflow-y-auto overscroll-contain">
         {visible.length === 0 ? (
           <div className="p-6 text-center text-xs text-gray-500">
-            No {closedTab ? "closed" : "open"} positions
+            No {showingOpen ? "open" : closedTab} positions
           </div>
         ) : (
           visible.map((p) => (
-            <div key={p.id} className="p-3 sm:p-4 border-b border-white/[0.04] hover:bg-white/[0.02]">
+            <div
+              key={p.id}
+              className="p-3 sm:p-4 border-b border-white/[0.04] hover:bg-white/[0.02]"
+            >
               <div className="flex items-center justify-between mb-1 gap-2">
                 <span className="text-[11px] sm:text-xs font-semibold text-gray-300 truncate">
                   {p.asset}
                 </span>
                 {p.status === "open" ? (
                   <span className="text-[10px] sm:text-[11px] text-amber-400 tabular-nums shrink-0">
-                    {timeLeft(p.expiry)}
+                    {formatTimeLeft(p.id)}
                   </span>
                 ) : (
                   <span
@@ -74,7 +106,9 @@ export function PositionsPanel({
                       p.status === "won" ? "text-emerald-500" : "text-rose-500"
                     }`}
                   >
-                    {p.status === "won" ? `+$${p.profit?.toFixed(2)}` : `-$${p.stake.toFixed(2)}`}
+                    {p.status === "won"
+                      ? `+$${p.profit?.toFixed(2) ?? "0.00"}`
+                      : `-$${p.stake.toFixed(2)}`}
                   </span>
                 )}
               </div>
