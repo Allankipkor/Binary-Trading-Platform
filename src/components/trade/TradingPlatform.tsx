@@ -7,7 +7,6 @@ import {
   BarChart3,
   ChevronDown,
   LayoutList,
-  LineChart,
   LogOut,
   Menu,
   Sparkles,
@@ -64,7 +63,6 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
   const [tradeError, setTradeError] = useState("");
   const [price, setPrice] = useState(1000);
   const [priceHistory, setPriceHistory] = useState<number[]>(Array(60).fill(1000));
-  const [chartType, setChartType] = useState<"line" | "candle">("line");
   const [mobileTab, setMobileTab] = useState<MobileTab>("trade");
   const [assetDropdown, setAssetDropdown] = useState(false);
   const [depositOpen, setDepositOpen] = useState(false);
@@ -183,39 +181,54 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
     const isUp = priceHistory[priceHistory.length - 1] >= priceHistory[priceHistory.length - 2];
     const color = isUp ? "#22c55e" : "#ef4444";
 
-    if (chartType === "line") {
-      ctx.beginPath();
-      priceHistory.forEach((p, i) => {
-        const x = padding + (i / (priceHistory.length - 1)) * (w - padding * 2);
-        const y = h - padding - ((p - min) / range) * (h - padding * 2);
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      });
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2;
-      ctx.stroke();
+    // Smooth the line slightly using quadratic curves between points for a softer look
+    const points = priceHistory.map((p, i) => ({
+      x: padding + (i / (priceHistory.length - 1)) * (w - padding * 2),
+      y: h - padding - ((p - min) / range) * (h - padding * 2),
+    }));
 
-      // Gradient fill
-      const grad = ctx.createLinearGradient(0, 0, 0, h);
-      grad.addColorStop(0, isUp ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)");
-      grad.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.lineTo(w - padding, h - padding);
-      ctx.lineTo(padding, h - padding);
-      ctx.closePath();
-      ctx.fillStyle = grad;
-      ctx.fill();
-    } else {
-      const barW = (w - padding * 2) / priceHistory.length;
-      priceHistory.forEach((p, i) => {
-        const prev = priceHistory[i - 1] ?? p;
-        const up = p >= prev;
-        const x = padding + i * barW;
-        const bodyH = (Math.abs(p - prev) / range) * (h - padding * 2) || 2;
-        const y = h - padding - ((Math.max(p, prev) - min) / range) * (h - padding * 2);
-        ctx.fillStyle = up ? "#22c55e" : "#ef4444";
-        ctx.fillRect(x, y, Math.max(barW - 1, 1), Math.max(bodyH, 2));
-      });
-    }
+    // Soft glow behind the line (cloudy effect)
+    ctx.save();
+    ctx.shadowColor = isUp ? "rgba(34,197,94,0.55)" : "rgba(239,68,68,0.55)";
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    points.forEach((pt, i) => {
+      if (i === 0) ctx.moveTo(pt.x, pt.y);
+      else {
+        const prev = points[i - 1];
+        const midX = (prev.x + pt.x) / 2;
+        const midY = (prev.y + pt.y) / 2;
+        ctx.quadraticCurveTo(prev.x, prev.y, midX, midY);
+      }
+    });
+    ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+
+    // Cloudy gradient fill — taller, more diffuse fade with multiple stops
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, isUp ? "rgba(34,197,94,0.22)" : "rgba(239,68,68,0.22)");
+    grad.addColorStop(0.35, isUp ? "rgba(34,197,94,0.10)" : "rgba(239,68,68,0.10)");
+    grad.addColorStop(0.7, isUp ? "rgba(34,197,94,0.03)" : "rgba(239,68,68,0.03)");
+    grad.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.beginPath();
+    points.forEach((pt, i) => {
+      if (i === 0) ctx.moveTo(pt.x, pt.y);
+      else {
+        const prev = points[i - 1];
+        const midX = (prev.x + pt.x) / 2;
+        const midY = (prev.y + pt.y) / 2;
+        ctx.quadraticCurveTo(prev.x, prev.y, midX, midY);
+      }
+    });
+    ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
+    ctx.lineTo(w - padding, h - padding);
+    ctx.lineTo(padding, h - padding);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
 
     const lastY = h - padding - ((price - min) / range) * (h - padding * 2);
 
@@ -229,17 +242,21 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Dot at tip
+    // Glowing dot at tip
+    ctx.save();
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 8;
     ctx.beginPath();
     ctx.arc(w - padding, lastY, 4, 0, Math.PI * 2);
     ctx.fillStyle = color;
     ctx.fill();
+    ctx.restore();
 
     // Border
     ctx.strokeStyle = "rgba(255,255,255,0.06)";
     ctx.lineWidth = 1;
     ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
-  }, [priceHistory, price, chartType]);
+  }, [priceHistory, price]);
 
   // Persist demo balance changes to the server (authenticated users only)
   const demoBalanceRef = useRef(demoBalance);
@@ -620,22 +637,59 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
               );
             })}
           </div>
-          <ChartToolbar
-            selectedAsset={selectedAsset}
-            assetDropdown={assetDropdown}
-            setAssetDropdown={setAssetDropdown}
-            setSelectedAsset={setSelectedAsset}
-            price={price}
-            chartType={chartType}
-            setChartType={setChartType}
-          />
           <div
             ref={chartContainerRef}
             className="flex-1 relative bg-[#070809] min-h-[180px] m-3 rounded-xl border border-white/[0.08] overflow-hidden"
           >
             <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+
+            {/* Asset name + live price/change — overlaid top-left */}
+            <div className="absolute top-3 left-3 z-10">
+              <button
+                onClick={() => setAssetDropdown((v) => !v)}
+                className="flex items-center gap-2 bg-black/30 backdrop-blur-sm rounded-xl px-3 py-2 hover:bg-black/40 transition"
+              >
+                <div className="w-7 h-7 rounded-lg bg-[#3B82F6]/15 border border-[#3B82F6]/25 flex items-center justify-center shrink-0">
+                  <BarChart3 className="w-3.5 h-3.5 text-[#3B82F6]" />
+                </div>
+                <div className="text-left min-w-0">
+                  <div className="text-sm font-bold text-white truncate">{selectedAsset.name}</div>
+                  <div className="text-[11px] text-emerald-400 flex items-center gap-1">
+                    <span className="tabular-nums">{price.toFixed(2)}</span>
+                    <span>+0.41 (0.00%)</span>
+                  </div>
+                </div>
+                <ChevronDown className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+              </button>
+              {assetDropdown && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setAssetDropdown(false)} />
+                  <div className="absolute top-full left-0 mt-1 w-72 max-h-64 overflow-y-auto rounded-xl border border-white/[0.07] bg-[#141822] shadow-2xl z-50">
+                    {ASSETS.map((a) => (
+                      <button
+                        key={a.id}
+                        onClick={() => { setSelectedAsset(a); setAssetDropdown(false); }}
+                        className={`w-full px-4 py-3 text-left text-xs hover:bg-white/5 transition min-h-[44px] ${
+                          a.id === selectedAsset.id ? "text-[#3B82F6]" : "text-gray-300"
+                        }`}
+                      >
+                        <div className="font-semibold">{a.name}</div>
+                        <div className="text-[10px] text-gray-500">{a.payout}% payout</div>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* PRICE box — overlaid top-right */}
+            <div className="absolute top-3 right-3 z-10 bg-black/30 backdrop-blur-sm rounded-xl px-4 py-2 text-right">
+              <div className="text-[9px] text-gray-400 font-semibold uppercase tracking-wider">Price</div>
+              <div className="text-lg font-bold text-white tabular-nums leading-tight">{price.toFixed(2)}</div>
+            </div>
+
             {/* Desktop price ladder */}
-            <div className="absolute right-0 top-0 bottom-0 w-16 xl:w-20 flex flex-col justify-around items-end pr-2 pointer-events-none">
+            <div className="absolute right-0 top-0 bottom-0 w-16 xl:w-20 flex flex-col justify-around items-end pr-2 pointer-events-none pt-16">
               {[2, 1, 0, -1, -2].map((offset) => {
                 const val = (price + offset * 0.35).toFixed(2);
                 const isCurrent = offset === 0;
@@ -697,24 +751,62 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
               })}
             </div>
 
-            {/* Chart toolbar */}
-            <ChartToolbar
-              selectedAsset={selectedAsset}
-              assetDropdown={assetDropdown}
-              setAssetDropdown={setAssetDropdown}
-              setSelectedAsset={setSelectedAsset}
-              price={price}
-              chartType={chartType}
-              setChartType={setChartType}
-              compact
-            />
-
-            {/* Chart card */}
+            {/* Chart card — asset info and price overlaid, TagBinary style */}
             <div className="px-2 sm:px-3 py-2 bg-[#0a0c12] shrink-0">
-              <div className="h-[18vh] sm:h-[24vh] min-h-[120px] max-h-[200px] relative bg-[#070809] rounded-xl border border-white/[0.08] overflow-hidden">
+              <div className="h-[20vh] sm:h-[26vh] min-h-[140px] max-h-[220px] relative bg-[#070809] rounded-xl border border-white/[0.08] overflow-hidden">
                 <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+
+                {/* Asset name + live price/change — overlaid top-left */}
+                <div className="absolute top-2 left-2 z-10">
+                  <button
+                    onClick={() => setAssetDropdown((v) => !v)}
+                    className="flex items-center gap-2 bg-black/30 backdrop-blur-sm rounded-xl px-2.5 py-1.5 max-w-[68%]"
+                  >
+                    <div className="w-6 h-6 rounded-lg bg-[#3B82F6]/15 border border-[#3B82F6]/25 flex items-center justify-center shrink-0">
+                      <BarChart3 className="w-3 h-3 text-[#3B82F6]" />
+                    </div>
+                    <div className="text-left min-w-0">
+                      <div className="text-[11px] sm:text-xs font-bold text-white truncate leading-tight">
+                        {selectedAsset.name}
+                      </div>
+                      <div className="text-[9px] sm:text-[10px] text-emerald-400 flex items-center gap-1 leading-tight">
+                        <span className="tabular-nums">{price.toFixed(2)}</span>
+                        <span>+0.41 (0.00%)</span>
+                      </div>
+                    </div>
+                    <ChevronDown className="w-3 h-3 text-gray-400 shrink-0" />
+                  </button>
+                  {assetDropdown && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setAssetDropdown(false)} />
+                      <div className="absolute top-full left-0 mt-1 w-[min(80vw,18rem)] max-h-64 overflow-y-auto rounded-xl border border-white/[0.07] bg-[#141822] shadow-2xl z-50">
+                        {ASSETS.map((a) => (
+                          <button
+                            key={a.id}
+                            onClick={() => { setSelectedAsset(a); setAssetDropdown(false); }}
+                            className={`w-full px-4 py-3 text-left text-xs hover:bg-white/5 transition min-h-[44px] ${
+                              a.id === selectedAsset.id ? "text-[#3B82F6]" : "text-gray-300"
+                            }`}
+                          >
+                            <div className="font-semibold">{a.name}</div>
+                            <div className="text-[10px] text-gray-500">{a.payout}% payout</div>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* PRICE box — overlaid top-right */}
+                <div className="absolute top-2 right-2 z-10 bg-black/30 backdrop-blur-sm rounded-xl px-3 py-1.5 text-right">
+                  <div className="text-[8px] sm:text-[9px] text-gray-400 font-semibold uppercase tracking-wider">Price</div>
+                  <div className="text-sm sm:text-base font-bold text-white tabular-nums leading-tight">
+                    {price.toFixed(2)}
+                  </div>
+                </div>
+
                 {/* Price ladder */}
-                <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-20 flex flex-col justify-around items-end pr-1.5 sm:pr-2 pointer-events-none">
+                <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-20 flex flex-col justify-around items-end pr-1.5 sm:pr-2 pointer-events-none pt-12">
                   {[2, 1, 0, -1, -2].map((offset) => {
                     const val = (price + offset * 0.35).toFixed(2);
                     const isCurrent = offset === 0;
@@ -879,92 +971,6 @@ function LiveDigitTracker({ price, priceHistory }: { price: number; priceHistory
             );
           })}
         </div>
-      </div>
-    </div>
-  );
-}
-
-// ── ChartToolbar ──
-function ChartToolbar({
-  selectedAsset,
-  assetDropdown,
-  setAssetDropdown,
-  setSelectedAsset,
-  price,
-  chartType,
-  setChartType,
-  compact = false,
-}: {
-  selectedAsset: Asset;
-  assetDropdown: boolean;
-  setAssetDropdown: (v: boolean) => void;
-  setSelectedAsset: (a: Asset) => void;
-  price: number;
-  chartType: "line" | "candle";
-  setChartType: (t: "line" | "candle") => void;
-  compact?: boolean;
-}) {
-  return (
-    <div className={`flex items-center justify-between border-b border-white/[0.07] bg-[#141822] shrink-0 ${
-      compact ? "px-3 py-2" : "px-4 py-2.5 lg:px-6"
-    }`}>
-      <div className="relative min-w-0 flex-1 mr-2">
-        <button
-          onClick={() => setAssetDropdown(!assetDropdown)}
-          className="flex items-center gap-2 max-w-full px-2 py-1.5 rounded-lg hover:bg-white/5 transition min-h-[44px]"
-        >
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#3B82F6]/10 border border-[#3B82F6]/20 flex items-center justify-center shrink-0">
-            <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#3B82F6]" />
-          </div>
-          <div className="text-left min-w-0">
-            <div className="text-xs sm:text-sm font-bold truncate">
-              {compact ? selectedAsset.name.replace(" Index", "") : selectedAsset.name}
-            </div>
-            <div className="text-[10px] sm:text-xs text-emerald-400 flex items-center gap-1 flex-wrap">
-              <span className="tabular-nums">{price.toFixed(2)}</span>
-              <span className="text-emerald-500">+0.41 (0.00%)</span>
-              <TrendingUp className="w-2.5 h-2.5 text-emerald-500" />
-            </div>
-          </div>
-          <ChevronDown className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-        </button>
-        {assetDropdown && (
-          <>
-            <div className="fixed inset-0 z-40" onClick={() => setAssetDropdown(false)} />
-            <div className="absolute top-full left-0 mt-1 w-[min(100vw-2rem,20rem)] max-h-64 overflow-y-auto rounded-xl border border-white/[0.07] bg-[#141822] shadow-2xl z-50">
-              {ASSETS.map((a) => (
-                <button
-                  key={a.id}
-                  onClick={() => { setSelectedAsset(a); setAssetDropdown(false); }}
-                  className={`w-full px-4 py-3 text-left text-xs hover:bg-white/5 transition min-h-[44px] ${
-                    a.id === selectedAsset.id ? "text-[#3B82F6]" : "text-gray-300"
-                  }`}
-                >
-                  <div className="font-semibold">{a.name}</div>
-                  <div className="text-[10px] text-gray-500">{a.payout}% payout</div>
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-        <button
-          onClick={() => setChartType("line")}
-          className={`p-1.5 sm:p-2 rounded-lg transition min-h-[36px] min-w-[36px] flex items-center justify-center ${
-            chartType === "line" ? "bg-[#3B82F6]/20 text-[#3B82F6]" : "text-gray-400 hover:bg-white/5"
-          }`}
-        >
-          <LineChart className="w-4 h-4 sm:w-5 sm:h-5" />
-        </button>
-        <button
-          onClick={() => setChartType("candle")}
-          className={`p-1.5 sm:p-2 rounded-lg transition min-h-[36px] min-w-[36px] flex items-center justify-center ${
-            chartType === "candle" ? "bg-[#3B82F6]/20 text-[#3B82F6]" : "text-gray-400 hover:bg-white/5"
-          }`}
-        >
-          <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />
-        </button>
       </div>
     </div>
   );
