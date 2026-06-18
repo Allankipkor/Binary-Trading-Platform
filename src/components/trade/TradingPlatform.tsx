@@ -69,6 +69,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
   const [assetDropdown, setAssetDropdown] = useState(false);
   const [depositOpen, setDepositOpen] = useState(false);
   const [closedTab, setClosedTab] = useState<"won" | "lost">("won");
+  const [lastSettledProfit, setLastSettledProfit] = useState<{ id: string; profit: number } | null>(null);
   const [accountMode, setAccountMode] = useState<"real" | "demo">("real");
   const [accountDropdown, setAccountDropdown] = useState(false);
   const [navMenuOpen, setNavMenuOpen] = useState(false);
@@ -266,15 +267,30 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
         if (p.status !== "open" || p.expiry > now) return p;
         const won = p.direction === "up" ? price > p.openPrice : price < p.openPrice;
         const profit = won ? p.payout - p.stake : -p.stake;
-        if (isAuthenticated && !p.isDemo) {
+
+        if (p.isDemo) {
+          // Demo: stake was already deducted at placement.
+          // On win, credit back the full payout (stake + profit).
+          // On loss, nothing more to deduct — stake already gone.
+          setDemoBalance((b) => +(b + (won ? p.payout : 0)).toFixed(2));
+        } else if (isAuthenticated) {
+          // Real money: let the server be the source of truth, but also
+          // optimistically reflect the result locally so the UI doesn't
+          // lag behind while the PATCH round-trip completes.
+          setBalance((b) => +(b + (won ? p.payout : 0)).toFixed(2));
           fetch("/api/trades", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id: p.id, status: won ? "won" : "lost", profit, closePrice: price }),
-          }).then(() => syncFromApi());
+          })
+            .then(() => syncFromApi())
+            .catch(() => {});
         } else {
-          setDemoBalance((b) => b + (won ? p.payout : 0));
+          // Guest, non-demo fallback (shouldn't normally happen, but stay safe)
+          setBalance((b) => +(b + (won ? p.payout : 0)).toFixed(2));
         }
+
+        setLastSettledProfit({ id: p.id, profit });
         return { ...p, status: won ? "won" : "lost", profit };
       })
     );
@@ -381,6 +397,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
     onDurationChange: setDuration,
     onStakeChange: setStake,
     onPlaceTrade: (direction: "up" | "down", meta?: { digit?: number; contractType?: string; digitDirection?: string }) => placeTrade(direction, meta),
+    lastSettledProfit,
   };
 
   if (sessionStatus === "loading") {
