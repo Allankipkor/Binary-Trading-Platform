@@ -6,14 +6,14 @@ import { getAsset } from "@/lib/assets";
 import { tickPrice } from "@/lib/prices";
 import { settleAndFetchTrades } from "@/lib/trades";
 
-const CONTRACT_TYPES = ["Rise/Fall", "Even/Odd", "Over/Under", "Match/Differ"] as const;
+const CONTRACT_TYPES = ["Even/Odd", "Over/Under", "Match/Differ"] as const;
 
 const placeSchema = z.object({
   assetId: z.string(),
   contractType: z.enum(CONTRACT_TYPES),
   direction: z.enum(["up", "down"]),
   stake: z.number().min(0.1).max(10000),
-  durationMinutes: z.number().int().min(1).max(60),
+  durationSeconds: z.number().int().min(1).max(3600).default(1),
   // Optional digit-contract metadata (Even/Odd, Over/Under, Match/Differ)
   digit: z.number().int().min(0).max(9).optional(),
   digitDirection: z.string().optional(),
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: message, details: flat }, { status: 400 });
     }
 
-    const { assetId, contractType, direction, stake, durationMinutes, digit, digitDirection } =
+    const { assetId, contractType, direction, stake, durationSeconds, digit, digitDirection } =
       parsed.data;
 
     const asset = getAsset(assetId);
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
     }
 
     const openPrice = await tickPrice(assetId);
-    const expiresAt = new Date(Date.now() + durationMinutes * 60 * 1000);
+    const expiresAt = new Date(Date.now() + durationSeconds * 1000);
 
     // Store digit-contract metadata inside contractType string if no dedicated
     // columns exist yet, e.g. "Even/Odd:Even:6" — falls back gracefully if

@@ -5,6 +5,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BarChart3,
+  CheckCircle2,
   ChevronDown,
   LayoutList,
   LogOut,
@@ -12,6 +13,7 @@ import {
   Sparkles,
   TrendingUp,
   X,
+  XCircle,
 } from "lucide-react";
 import { DepositModal } from "../payments/DepositModal";
 import { ASSETS, type Asset } from "@/lib/assets";
@@ -55,8 +57,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
   const isAuthenticated = !forceDemo && !!session?.user;
 
   const [selectedAsset, setSelectedAsset] = useState<Asset>(ASSETS[0]);
-  const [contractType, setContractType] = useState<ContractType>("Rise/Fall");
-  const [duration, setDuration] = useState("1 min");
+  const [contractType, setContractType] = useState<ContractType>("Match/Differ");
   const [stake, setStake] = useState(10);
   const [balance, setBalance] = useState(0);
   const [positions, setPositions] = useState<Position[]>([]);
@@ -68,6 +69,24 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
   const [depositOpen, setDepositOpen] = useState(false);
   const [closedTab, setClosedTab] = useState<"won" | "lost">("won");
   const [lastSettledProfit, setLastSettledProfit] = useState<{ id: string; profit: number } | null>(null);
+
+  // Floating toast notifications (executed / closed)
+  type Toast = {
+    id: string;
+    kind: "executed" | "closed-profit" | "closed-loss";
+    asset: string;
+    direction?: "up" | "down";
+    amount: number;
+    price?: number;
+  };
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const pushToast = useCallback((t: Omit<Toast, "id">) => {
+    const id = crypto.randomUUID();
+    setToasts((prev) => [...prev, { ...t, id }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((x) => x.id !== id));
+    }, 3200);
+  }, []);
   const [accountMode, setAccountMode] = useState<"real" | "demo">("real");
   const [accountDropdown, setAccountDropdown] = useState(false);
   const [navMenuOpen, setNavMenuOpen] = useState(false);
@@ -308,10 +327,15 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
         }
 
         setLastSettledProfit({ id: p.id, profit });
+        pushToast({
+          kind: profit >= 0 ? "closed-profit" : "closed-loss",
+          asset: p.asset,
+          amount: profit,
+        });
         return { ...p, status: won ? "won" : "lost", profit };
       })
     );
-  }, [price, isAuthenticated, syncFromApi]);
+  }, [price, isAuthenticated, syncFromApi, pushToast]);
 
   // Timer countdown
   useEffect(() => {
@@ -334,16 +358,16 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
   const placeTrade = async (
     direction: "up" | "down",
     meta?: { digit?: number; contractType?: string; digitDirection?: string }
-  ) => {
+  ): Promise<boolean> => {
     setTradeError("");
     const isDemo = accountMode === "demo" || !isAuthenticated;
     const activeBalance = isDemo ? demoBalance : balance;
 
     if (stake > activeBalance) {
       setTradeError("Insufficient balance");
-      return;
+      return false;
     }
-    const durationMs = parseInt(duration) * 60 * 1000;
+    const durationMs = 1000; // fixed 1-second tick-based resolution
     const payout = +(stake * (1 + selectedAsset.payout / 100)).toFixed(2);
     const resolvedContractType = meta?.contractType ?? contractType;
     const newPosition: Position = {
@@ -359,11 +383,19 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
       isDemo,
     };
 
+    pushToast({
+      kind: "executed",
+      asset: selectedAsset.name,
+      direction,
+      amount: stake,
+      price,
+    });
+
     if (isDemo) {
       // Demo trades always run locally, even when signed in
       setPositions((prev) => [...prev, newPosition]);
       setDemoBalance((b) => b - stake);
-      return;
+      return true;
     }
 
     try {
@@ -375,7 +407,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
           contractType: resolvedContractType,
           direction,
           stake,
-          durationMinutes: parseInt(duration, 10),
+          durationSeconds: 1,
           digit: meta?.digit,
           digitDirection: meta?.digitDirection,
         }),
@@ -389,14 +421,16 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
               ? Object.values(errData.error.fieldErrors).flat().join(", ") || "Failed to place trade"
               : "Failed to place trade";
         setTradeError(message);
-        return;
+        return false;
       }
       const data = await res.json();
       setPositions((prev) => [...prev, { ...newPosition, id: data.trade?.id ?? newPosition.id }]);
       setBalance((b) => (data.balance !== undefined ? data.balance : b - stake));
+      return true;
     } catch (e) {
       console.error("Trade network error:", e);
       setTradeError("Network error — please try again");
+      return false;
     }
   };
 
@@ -406,12 +440,10 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
   const orderPanelProps = {
     selectedAsset,
     contractType,
-    duration,
     stake,
     balance: displayBalance,
     tradeError,
     onContractTypeChange: setContractType,
-    onDurationChange: setDuration,
     onStakeChange: setStake,
     onPlaceTrade: (direction: "up" | "down", meta?: { digit?: number; contractType?: string; digitDirection?: string }) => placeTrade(direction, meta),
     lastSettledProfit,
@@ -427,6 +459,43 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
 
   return (
     <div className="h-screen bg-[#0a0c12] text-white flex flex-col overflow-hidden">
+
+      {/* ── Toast notifications ── */}
+      <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[100] w-[92%] max-w-sm flex flex-col gap-2 pointer-events-none">
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className="bg-[#0d0f17]/95 backdrop-blur-md border border-white/10 rounded-2xl px-4 py-3 shadow-2xl animate-[slideDown_0.25s_ease-out] flex items-start gap-3"
+          >
+            <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
+              t.kind === "executed" ? "bg-[#3B82F6]/15" : t.kind === "closed-profit" ? "bg-emerald-500/15" : "bg-rose-500/15"
+            }`}>
+              {t.kind === "executed" ? (
+                <TrendingUp className="w-4 h-4 text-[#3B82F6]" />
+              ) : t.kind === "closed-profit" ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              ) : (
+                <XCircle className="w-4 h-4 text-rose-400" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">
+                {t.kind === "executed" ? "Market Order Executed" : t.kind === "closed-profit" ? "Trade Closed — Profit" : "Trade Closed — Loss"}
+              </p>
+              <p className="text-sm font-bold text-white truncate">{t.asset}</p>
+              {t.kind === "executed" ? (
+                <p className="text-xs font-semibold text-[#60a5fa] mt-0.5">
+                  {t.direction === "up" ? "Buy" : "Sell"} ${t.amount.toFixed(2)} at {t.price?.toFixed(2)}
+                </p>
+              ) : (
+                <p className={`text-xs font-bold mt-0.5 ${t.amount >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                  {t.amount >= 0 ? "+" : ""}${t.amount.toFixed(2)}
+                </p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
 
       {/* ── Header ── */}
       <header className="shrink-0 border-b border-white/[0.07] bg-[#0a0c12]/95 backdrop-blur z-30">
@@ -621,7 +690,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
         <main className="flex-1 flex flex-col min-w-0 min-h-0">
           {/* Contract tabs */}
           <div className="flex border-b border-white/[0.07] bg-[#0a0c12] shrink-0 overflow-x-auto scrollbar-hide">
-            {(["Matches/Differs", "Even/Odd", "Over/Under", "Rise/Fall"] as const).map((t) => {
+            {(["Matches/Differs", "Even/Odd", "Over/Under"] as const).map((t) => {
               const mapped = t === "Matches/Differs" ? "Match/Differ" : t;
               const isActive = contractType === mapped;
               return (
@@ -734,7 +803,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
           <>
             {/* Contract tabs */}
             <div className="flex border-b border-white/[0.07] bg-[#0a0c12] shrink-0 overflow-x-auto scrollbar-hide snap-x">
-              {(["Matches/Differs", "Even/Odd", "Over/Under", "Rise/Fall"] as const).map((t) => {
+              {(["Matches/Differs", "Even/Odd", "Over/Under"] as const).map((t) => {
                 const mapped = t === "Matches/Differs" ? "Match/Differ" : t;
                 const isActive = contractType === mapped;
                 return (
