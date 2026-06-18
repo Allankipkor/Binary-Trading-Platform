@@ -3,15 +3,20 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getAsset } from "@/lib/assets";
-import { getPrice, tickPrice } from "@/lib/prices";
+import { tickPrice } from "@/lib/prices";
 import { settleAndFetchTrades } from "@/lib/trades";
+
+const CONTRACT_TYPES = ["Rise/Fall", "Even/Odd", "Over/Under", "Match/Differ"] as const;
 
 const placeSchema = z.object({
   assetId: z.string(),
-  contractType: z.string(),
+  contractType: z.enum(CONTRACT_TYPES),
   direction: z.enum(["up", "down"]),
   stake: z.number().min(0.1).max(10000),
   durationMinutes: z.number().int().min(1).max(60),
+  // Optional digit-contract metadata (Even/Odd, Over/Under, Match/Differ)
+  digit: z.number().int().min(0).max(9).optional(),
+  digitDirection: z.string().optional(),
 });
 
 export async function GET() {
@@ -39,22 +44,39 @@ export async function POST(req: Request) {
     const body = await req.json();
     const parsed = placeSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+      // Surface a readable message instead of a raw zod tree
+      const flat = parsed.error.flatten();
+      const firstFieldError = Object.values(flat.fieldErrors).flat()[0];
+      const message = firstFieldError || "Invalid trade request";
+      return NextResponse.json({ error: message, details: flat }, { status: 400 });
     }
 
-    const { assetId, contractType, direction, stake, durationMinutes } = parsed.data;
+    const { assetId, contractType, direction, stake, durationMinutes, digit, digitDirection } =
+      parsed.data;
+
     const asset = getAsset(assetId);
     if (!asset) {
       return NextResponse.json({ error: "Invalid asset" }, { status: 400 });
     }
 
     const user = await prisma.user.findUnique({ where: { id: session.user.id } });
-    if (!user || user.balance < stake) {
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+    if (user.balance < stake) {
       return NextResponse.json({ error: "Insufficient balance" }, { status: 400 });
     }
 
     const openPrice = await tickPrice(assetId);
     const expiresAt = new Date(Date.now() + durationMinutes * 60 * 1000);
+
+    // Store digit-contract metadata inside contractType string if no dedicated
+    // columns exist yet, e.g. "Even/Odd:Even:6" — falls back gracefully if
+    // your schema doesn't have separate digit/digitDirection columns.
+    const enrichedContractType =
+      digit !== undefined && digitDirection
+        ? `${contractType}|${digitDirection}|${digit}`
+        : contractType;
 
     const [, trade] = await prisma.$transaction([
       prisma.user.update({
@@ -66,7 +88,7 @@ export async function POST(req: Request) {
           userId: session.user.id,
           assetId,
           assetName: asset.name,
-          contractType,
+          contractType: enrichedContractType,
           direction,
           stake,
           payout: asset.payout,
@@ -82,7 +104,9 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ trade, balance: updatedUser?.balance ?? 0 }, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: "Failed to place trade" }, { status: 500 });
+  } catch (err) {
+    console.error("POST /api/trades error:", err);
+    const message = err instanceof Error ? err.message : "Failed to place trade";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

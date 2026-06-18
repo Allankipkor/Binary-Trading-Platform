@@ -14,7 +14,6 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
-import { Logo } from "../Logo";
 import { DepositModal } from "../payments/DepositModal";
 import { ASSETS, type Asset } from "@/lib/assets";
 import { PositionsPanel, type Position } from "./PositionsPanel";
@@ -60,7 +59,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
   const [contractType, setContractType] = useState<ContractType>("Rise/Fall");
   const [duration, setDuration] = useState("1 min");
   const [stake, setStake] = useState(10);
-  const [balance, setBalance] = useState(isAuthenticated ? 0 : 10000);
+  const [balance, setBalance] = useState(0);
   const [positions, setPositions] = useState<Position[]>([]);
   const [tradeError, setTradeError] = useState("");
   const [price, setPrice] = useState(1000);
@@ -74,7 +73,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
   const [accountDropdown, setAccountDropdown] = useState(false);
   const [navMenuOpen, setNavMenuOpen] = useState(false);
 
-  const demoBalance = 1000;
+  const [demoBalance, setDemoBalance] = useState(10000);
   const displayBalance = accountMode === "real" ? balance : demoBalance;
   const [timeLeft, setTimeLeft] = useState<Record<string, number>>({});
 
@@ -83,13 +82,18 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
 
   const syncFromApi = useCallback(async () => {
     try {
-      const [balRes, posRes] = await Promise.all([
+      const [balRes, demoRes, posRes] = await Promise.all([
         fetch("/api/balance"),
+        fetch("/api/demo-balance"),
         fetch("/api/trades?status=open"),
       ]);
       if (balRes.ok) {
         const b = await balRes.json();
         setBalance(b.balance ?? 0);
+      }
+      if (demoRes.ok) {
+        const d = await demoRes.json();
+        if (typeof d.demoBalance === "number") setDemoBalance(d.demoBalance);
       }
       if (posRes.ok) {
         const p = await posRes.json();
@@ -236,6 +240,24 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
     ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
   }, [priceHistory, price, chartType]);
 
+  // Persist demo balance changes to the server (authenticated users only)
+  const demoBalanceRef = useRef(demoBalance);
+  useEffect(() => {
+    demoBalanceRef.current = demoBalance;
+  }, [demoBalance]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const timeout = setTimeout(() => {
+      fetch("/api/demo-balance", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ demoBalance: demoBalanceRef.current }),
+      }).catch(() => {});
+    }, 1500);
+    return () => clearTimeout(timeout);
+  }, [demoBalance, isAuthenticated]);
+
   // Resolve positions
   useEffect(() => {
     const now = Date.now();
@@ -244,14 +266,14 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
         if (p.status !== "open" || p.expiry > now) return p;
         const won = p.direction === "up" ? price > p.openPrice : price < p.openPrice;
         const profit = won ? p.payout - p.stake : -p.stake;
-        if (isAuthenticated) {
+        if (isAuthenticated && !p.isDemo) {
           fetch("/api/trades", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id: p.id, status: won ? "won" : "lost", profit, closePrice: price }),
           }).then(() => syncFromApi());
         } else {
-          setBalance((b) => b + (won ? p.payout : 0));
+          setDemoBalance((b) => b + (won ? p.payout : 0));
         }
         return { ...p, status: won ? "won" : "lost", profit };
       })
@@ -276,67 +298,89 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
     if (isAuthenticated) syncFromApi();
   }, [isAuthenticated, sessionStatus, syncFromApi]);
 
-  const placeTrade = async (direction: "up" | "down") => {
+  const placeTrade = async (
+    direction: "up" | "down",
+    meta?: { digit?: number; contractType?: string; digitDirection?: string }
+  ) => {
     setTradeError("");
-    if (stake > balance) {
+    const isDemo = accountMode === "demo" || !isAuthenticated;
+    const activeBalance = isDemo ? demoBalance : balance;
+
+    if (stake > activeBalance) {
       setTradeError("Insufficient balance");
       return;
     }
     const durationMs = parseInt(duration) * 60 * 1000;
     const payout = +(stake * (1 + selectedAsset.payout / 100)).toFixed(2);
+    const resolvedContractType = meta?.contractType ?? contractType;
     const newPosition: Position = {
       id: crypto.randomUUID(),
       asset: selectedAsset.name,
-      type: contractType,
+      type: resolvedContractType,
       direction,
       stake,
       payout,
       expiry: Date.now() + durationMs,
       openPrice: price,
       status: "open",
+      isDemo,
     };
-    if (isAuthenticated) {
-      try {
-        const res = await fetch("/api/trades", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            assetId: selectedAsset.id,
-            assetName: selectedAsset.name,
-            contractType,
-            direction,
-            stake,
-            payout,
-            expiry: newPosition.expiry,
-            openPrice: price,
-          }),
-        });
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        setPositions((prev) => [...prev, { ...newPosition, id: data.trade?.id ?? newPosition.id }]);
-        setBalance((b) => b - stake);
-      } catch {
-        setTradeError("Failed to place trade");
-      }
-    } else {
+
+    if (isDemo) {
+      // Demo trades always run locally, even when signed in
       setPositions((prev) => [...prev, newPosition]);
-      setBalance((b) => b - stake);
+      setDemoBalance((b) => b - stake);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/trades", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          assetId: selectedAsset.id,
+          contractType: resolvedContractType,
+          direction,
+          stake,
+          durationMinutes: parseInt(duration, 10),
+          digit: meta?.digit,
+          digitDirection: meta?.digitDirection,
+        }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        const message =
+          typeof errData?.error === "string"
+            ? errData.error
+            : errData?.error?.fieldErrors
+              ? Object.values(errData.error.fieldErrors).flat().join(", ") || "Failed to place trade"
+              : "Failed to place trade";
+        setTradeError(message);
+        return;
+      }
+      const data = await res.json();
+      setPositions((prev) => [...prev, { ...newPosition, id: data.trade?.id ?? newPosition.id }]);
+      setBalance((b) => (data.balance !== undefined ? data.balance : b - stake));
+    } catch (e) {
+      console.error("Trade network error:", e);
+      setTradeError("Network error — please try again");
     }
   };
 
-  const openCount = positions.filter((p) => p.status === "open").length;
+  const visiblePositions = positions.filter((p) => Boolean(p.isDemo) === (accountMode === "demo"));
+  const openCount = visiblePositions.filter((p) => p.status === "open").length;
 
   const orderPanelProps = {
     selectedAsset,
     contractType,
     duration,
     stake,
-    balance,
+    balance: displayBalance,
     tradeError,
     onContractTypeChange: setContractType,
     onDurationChange: setDuration,
     onStakeChange: setStake,
-    onPlaceTrade: placeTrade,
+    onPlaceTrade: (direction: "up" | "down", meta?: { digit?: number; contractType?: string; digitDirection?: string }) => placeTrade(direction, meta),
   };
 
   if (sessionStatus === "loading") {
@@ -354,7 +398,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
       <header className="shrink-0 border-b border-white/[0.07] bg-[#13161e]/95 backdrop-blur z-30">
         <div className="flex items-center justify-between px-3 sm:px-4 lg:px-6 h-14 sm:h-16 gap-2 max-w-screen-2xl mx-auto w-full">
 
-          {/* Left: hamburger + logo */}
+          {/* Left: hamburger + wordmark */}
           <div className="flex items-center gap-2 min-w-0">
             <button
               onClick={() => setNavMenuOpen(true)}
@@ -362,7 +406,9 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
             >
               <Menu className="w-5 h-5" />
             </button>
-            <Logo size="sm" />
+            <span className="text-base sm:text-lg font-extrabold tracking-tight select-none">
+              <span className="text-[#3B82F6]">OPEN</span><span className="text-white">MARKET</span>
+            </span>
           </div>
 
           {/* Right: account switcher + deposit */}
@@ -371,19 +417,19 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
             <div className="relative">
               <button
                 onClick={() => setAccountDropdown((v) => !v)}
-                className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-[#1c2030] border border-white/[0.07] hover:border-white/20 transition min-h-[44px]"
+                className="flex items-center gap-1.5 px-2 py-1.5 rounded-2xl bg-[#1c2030] border border-white/[0.07] hover:border-white/20 transition min-h-[40px] max-w-[160px] sm:max-w-[200px]"
               >
-                {/* Flag */}
-                <span className="text-lg leading-none">🇺🇸</span>
-                <div className="text-left">
-                  <div className="text-xs sm:text-sm font-bold tabular-nums leading-tight">
+                {/* Flag - circular, smaller */}
+                <span className="w-6 h-6 rounded-full bg-[#1a1f35] border border-white/10 flex items-center justify-center text-xs leading-none shrink-0">🇺🇸</span>
+                <div className="text-left min-w-0">
+                  <div className="text-[11px] sm:text-xs font-bold tabular-nums leading-tight truncate">
                     ${displayBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                   <div className="text-[9px] text-gray-500 leading-tight">
                     {accountMode === "real" ? "Real" : "Demo"}
                   </div>
                 </div>
-                <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${accountDropdown ? "rotate-180" : ""}`} />
+                <ChevronDown className={`w-3 h-3 text-gray-400 shrink-0 transition-transform ${accountDropdown ? "rotate-180" : ""}`} />
               </button>
 
               {/* Account switcher dropdown */}
@@ -402,7 +448,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                       <div className="text-left flex-1 min-w-0">
                         <div className="text-sm font-semibold text-white">Real Account</div>
                         <div className="flex items-center gap-1 text-xs text-gray-400">
-                          <span>🇺🇸</span>
+                          <span className="w-4 h-4 rounded-full bg-[#1a1f35] flex items-center justify-center text-[10px] leading-none">🇺🇸</span>
                           <span className="tabular-nums">
                             ${balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
@@ -426,7 +472,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                       <div className="text-left flex-1 min-w-0">
                         <div className="text-sm font-semibold text-white">Demo Account</div>
                         <div className="flex items-center gap-1 text-xs text-gray-400">
-                          <span>🇺🇸</span>
+                          <span className="w-4 h-4 rounded-full bg-[#1a1f35] flex items-center justify-center text-[10px] leading-none">🇺🇸</span>
                           <span className="tabular-nums">
                             ${demoBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
@@ -472,7 +518,9 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
           <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setNavMenuOpen(false)} />
           <aside className="fixed left-0 top-0 bottom-0 w-72 bg-[#13161e] border-r border-white/[0.07] z-50 flex flex-col">
             <div className="flex items-center justify-between px-4 h-16 border-b border-white/[0.07]">
-              <Logo size="sm" />
+              <span className="text-base font-extrabold tracking-tight select-none">
+                <span className="text-[#3B82F6]">OPEN</span><span className="text-white">MARKET</span>
+              </span>
               <button
                 onClick={() => setNavMenuOpen(false)}
                 className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5"
@@ -527,7 +575,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
         {/* Left: Positions — only visible on lg+ */}
         <aside className="hidden lg:flex w-52 xl:w-64 2xl:w-72 border-r border-white/[0.07] flex-col shrink-0 bg-[#191c26]">
           <PositionsPanel
-            positions={positions}
+            positions={visiblePositions}
             closedTab={closedTab}
             onTabChange={setClosedTab}
             timeLeft={timeLeft}
@@ -591,7 +639,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
           {/* Positions strip — md only (tablet, no sidebar) */}
           <div className="lg:hidden border-t border-white/[0.07] h-40 shrink-0 overflow-hidden bg-[#191c26]">
             <PositionsPanel
-              positions={positions}
+              positions={visiblePositions}
               closedTab={closedTab}
               onTabChange={setClosedTab}
               timeLeft={timeLeft}
@@ -675,7 +723,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
         {mobileTab === "positions" && (
           <div className="flex-1 flex flex-col min-h-0 bg-[#191c26]">
             <PositionsPanel
-              positions={positions}
+              positions={visiblePositions}
               closedTab={closedTab}
               onTabChange={setClosedTab}
               timeLeft={timeLeft}

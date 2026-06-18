@@ -11,6 +11,7 @@ export interface Position {
   openPrice: number;
   status: "open" | "won" | "lost";
   profit?: number;
+  isDemo?: boolean;
 }
 
 interface PositionsPanelProps {
