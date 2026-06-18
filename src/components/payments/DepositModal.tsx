@@ -127,10 +127,7 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
           {tabs.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
-              onClick={() => {
-                setTab(id);
-                reset();
-              }}
+              onClick={() => { setTab(id); reset(); }}
               className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-semibold transition ${
                 tab === id
                   ? "text-[#3B82F6] border-b-2 border-[#3B82F6]"
@@ -145,21 +142,27 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
 
         <div className="p-4 sm:p-5 space-y-4 overflow-y-auto overscroll-contain flex-1">
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">Amount (USD)</label>
+            <label className="block text-xs font-medium text-gray-400 mb-1.5">
+              Amount (USD) <span className="text-gray-600">· min $1</span>
+            </label>
             <input
               type="number"
-              min={5}
+              min={1}
               max={10000}
               value={amount}
               onChange={(e) => setAmount(Number(e.target.value))}
               className="w-full px-4 py-3 rounded-xl bg-[#13161e] border border-white/[0.07] text-white text-sm focus:outline-none focus:border-[#3B82F6]/50"
             />
             <div className="flex gap-1.5 mt-2">
-              {[10, 25, 50, 100].map((v) => (
+              {[1, 5, 25, 50, 100].map((v) => (
                 <button
                   key={v}
                   onClick={() => setAmount(v)}
-                  className="flex-1 py-1 rounded text-[10px] font-medium bg-[#13161e] text-gray-400 border border-white/[0.07] hover:bg-white/5"
+                  className={`flex-1 py-1 rounded text-[10px] font-medium border transition ${
+                    amount === v
+                      ? "bg-[#1e3a5f] border-[#3B82F6] text-[#60a5fa]"
+                      : "bg-[#13161e] text-gray-400 border-white/[0.07] hover:bg-white/5"
+                  }`}
                 >
                   ${v}
                 </button>
@@ -227,7 +230,7 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
           {!cryptoResult && (
             <button
               onClick={handleDeposit}
-              disabled={loading || amount < 5}
+              disabled={loading || amount < 1}
               className="w-full py-3 rounded-xl text-white font-semibold text-sm disabled:opacity-40"
               style={{ background: "#3B82F6" }}
             >
