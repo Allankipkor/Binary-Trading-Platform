@@ -653,6 +653,9 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
             </div>
           </div>
 
+          {/* Live last-digit tracker */}
+          <LiveDigitTracker price={price} priceHistory={priceHistory} />
+
           {/* Positions strip — md only (tablet, no sidebar) */}
           <div className="lg:hidden border-t border-white/[0.07] h-40 shrink-0 overflow-hidden bg-[#191c26]">
             <PositionsPanel
@@ -729,6 +732,9 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                 </div>
               </div>
             </div>
+
+            {/* Live last-digit tracker — sits right under the chart */}
+            <LiveDigitTracker price={price} priceHistory={priceHistory} />
 
             {/* Scrollable order panel */}
             <div className="flex-1 overflow-y-auto overscroll-contain bg-[#191c26] border-t border-white/[0.07]">
@@ -811,6 +817,69 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
       </div>
 
       <DepositModal open={depositOpen} onClose={() => setDepositOpen(false)} onSuccess={syncFromApi} />
+    </div>
+  );
+}
+
+// ── LiveDigitTracker ──
+// Shows the last-digit frequency distribution from real price history,
+// with a moving cursor pointing at whichever digit the current price tick landed on.
+function LiveDigitTracker({ price, priceHistory }: { price: number; priceHistory: number[] }) {
+  const getLastDigit = (val: number) => {
+    // Use 2 decimal places, take the last digit of the cents value
+    const cents = Math.round(val * 100);
+    return cents % 10;
+  };
+
+  const currentDigit = getLastDigit(price);
+
+  // Compute real frequency % from the visible price history window
+  const counts = Array(10).fill(0);
+  priceHistory.forEach((p) => {
+    counts[getLastDigit(p)]++;
+  });
+  const total = priceHistory.length || 1;
+  const percentages = counts.map((c) => (c / total) * 100);
+  const maxPct = Math.max(...percentages);
+
+  return (
+    <div className="px-3 pt-3 pb-3 bg-[#13161e] border-b border-white/[0.07] shrink-0">
+      <div className="relative">
+        {/* Moving cursor arrow */}
+        <div
+          className="absolute -top-1 flex flex-col items-center transition-all duration-300 ease-out"
+          style={{ left: `calc(${(currentDigit / 9) * 100}% - 6px)` }}
+        >
+          <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-b-[7px] border-l-transparent border-r-transparent border-b-[#3B82F6]" />
+        </div>
+
+        <div className="flex justify-between gap-1 pt-3">
+          {percentages.map((pct, d) => {
+            const isCurrent = d === currentDigit;
+            const isHot = pct === maxPct && maxPct > 0;
+            return (
+              <div key={d} className="flex flex-col items-center gap-1 flex-1">
+                <div
+                  className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold border-2 transition-all ${
+                    isCurrent
+                      ? "bg-[#3B82F6] border-[#3B82F6] text-white scale-110"
+                      : isHot
+                        ? "bg-emerald-900/30 border-emerald-500/60 text-emerald-300"
+                        : "bg-[#1c2030] border-white/10 text-gray-300"
+                  }`}
+                >
+                  {d}
+                </div>
+                <span className={`text-[9px] sm:text-[10px] font-semibold tabular-nums ${
+                  d === 0 ? "text-rose-400" : isCurrent ? "text-[#60a5fa]" : "text-gray-500"
+                }`}>
+                  {pct.toFixed(1)}%
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

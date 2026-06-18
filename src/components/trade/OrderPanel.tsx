@@ -7,7 +7,6 @@ import type { Asset } from "@/lib/assets";
 const CONTRACT_TYPES = ["Rise/Fall", "Even/Odd", "Over/Under", "Match/Differ"] as const;
 const DURATIONS = ["1 min", "2 min", "5 min", "10 min", "15 min"];
 const STAKE_PRESETS = [1, 5, 10, 25, 50, 100];
-const DIGIT_BASE = [1.7, 9.3, 8.0, 9.0, 14.0, 13.0, 10.0, 13.6, 12.3, 9.3];
 const MULTIPLIER_OPTIONS = [2, 3, 5, 10, 20, 50, 100];
 
 type ContractType = (typeof CONTRACT_TYPES)[number];
@@ -29,12 +28,6 @@ interface OrderPanelProps {
   /** Net profit/loss of the most recently settled trade, so OrderPanel can track session P&L */
   lastSettledProfit?: { id: string; profit: number } | null;
   compact?: boolean;
-}
-
-function generateDigitProbs(): number[] {
-  return DIGIT_BASE.map((base) =>
-    Math.max(0, Math.min(25, +(base + (Math.random() - 0.5) * 1.5).toFixed(1)))
-  );
 }
 
 // Reusable adjustable number field (Target profit / Stop loss)
@@ -129,7 +122,6 @@ export function OrderPanel({
 }: OrderPanelProps) {
   const [tradeMode, setTradeMode] = useState<"auto" | "manual">("auto");
   const [selectedDigit, setSelectedDigit] = useState(5);
-  const [digitProbs, setDigitProbs] = useState<number[]>(DIGIT_BASE);
 
   const [targetProfit, setTargetProfit] = useState(200);
   const [stopLoss, setStopLoss] = useState(100);
@@ -145,11 +137,6 @@ export function OrderPanel({
   const [sessionResult, setSessionResult] = useState<"target" | "stop" | null>(null);
 
   const multiplier = MULTIPLIER_OPTIONS[multiplierIdx];
-
-  useEffect(() => {
-    const interval = setInterval(() => setDigitProbs(generateDigitProbs()), 2000);
-    return () => clearInterval(interval);
-  }, []);
 
   // Track settled trades into the running session P&L, and detect target/stop hits
   useEffect(() => {
@@ -272,46 +259,6 @@ export function OrderPanel({
         </div>
       </div>
 
-      {/* ── Digit selector (circular, with % below) — below stake, like TagBinary ── */}
-      {showDigits && (
-        <div className="px-3 pt-3 pb-3 border-b border-white/[0.07]">
-          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-3">
-            Select digit
-          </p>
-          <div className="flex justify-between gap-1">
-            {digitProbs.map((pct, d) => {
-              const isSelected = d === selectedDigit;
-              const isZero = d === 0;
-              return (
-                <button
-                  key={d}
-                  onClick={() => setSelectedDigit(d)}
-                  className="flex flex-col items-center gap-1.5 flex-1 min-h-[44px]"
-                >
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold border-2 transition ${
-                    isSelected
-                      ? "bg-[#3B82F6] border-[#3B82F6] text-white"
-                      : "bg-[#1c2030] border-white/10 text-gray-300 hover:border-white/25"
-                  }`}>
-                    {d}
-                  </div>
-                  <span className={`text-[10px] font-semibold tabular-nums ${
-                    isZero ? "text-rose-400" : isSelected ? "text-[#60a5fa]" : "text-gray-500"
-                  }`}>
-                    {pct.toFixed(1)}%
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          <p className="text-[9px] text-center text-gray-600 mt-2">
-            Digit <span className="text-[#3B82F6] font-bold">{selectedDigit}</span> selected
-            {contractType === "Over/Under" && ` · Over > ${selectedDigit} / Under ≤ ${selectedDigit}`}
-            {contractType === "Match/Differ" && ` · Match = ${selectedDigit} / Differ ≠ ${selectedDigit}`}
-          </p>
-        </div>
-      )}
-
       {/* ── Risk controls ── */}
       <div className="px-3 pt-3 pb-3 border-b border-white/[0.07]">
         <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-3">Risk controls</p>
@@ -333,6 +280,30 @@ export function OrderPanel({
           </div>
         </div>
       </div>
+
+      {/* ── Simple digit target selector (plain, no %, tap to choose) ── */}
+      {showDigits && (
+        <div className="px-3 pt-3 pb-3 border-b border-white/[0.07]">
+          <div className="flex justify-between gap-1.5">
+            {Array.from({ length: 10 }, (_, d) => d).map((d) => {
+              const isSelected = d === selectedDigit;
+              return (
+                <button
+                  key={d}
+                  onClick={() => setSelectedDigit(d)}
+                  className={`flex-1 h-9 rounded-lg text-sm font-bold transition min-w-0 ${
+                    isSelected
+                      ? "bg-[#3B82F6] text-white"
+                      : "bg-[#1c2030] text-gray-400 border border-white/[0.08] hover:bg-white/[0.06]"
+                  }`}
+                >
+                  {d}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── Session stats ── */}
       <div className="px-3 py-2.5 border-b border-white/[0.07] flex items-center justify-between">
