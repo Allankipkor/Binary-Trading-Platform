@@ -12,7 +12,7 @@ import {
 
 const schema = z.object({
   method: z.enum(["mpesa", "crypto", "card"]),
-  amount: z.number().min(5).max(10000),
+  amount: z.number().min(1).max(10000),
   phone: z.string().optional(),
 });
 
@@ -26,7 +26,12 @@ export async function POST(req: Request) {
     const body = await req.json();
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+      const flat = parsed.error.flatten();
+      const firstError = Object.values(flat.fieldErrors).flat()[0];
+      return NextResponse.json(
+        { error: firstError || "Invalid deposit request", details: flat },
+        { status: 400 }
+      );
     }
 
     const { method, amount, phone } = parsed.data;
@@ -47,6 +52,17 @@ export async function POST(req: Request) {
       }
 
       const amountKes = usdToKes(amount);
+
+      // Safaricom Daraja requires a minimum of KES 1 per STK push; in practice
+      // amounts under ~KES 10 are frequently rejected by the sandbox/production
+      // API itself, separate from our own validation above.
+      if (amountKes < 1) {
+        return NextResponse.json(
+          { error: "Amount is too small to convert to a valid M-Pesa charge" },
+          { status: 400 }
+        );
+      }
+
       const transaction = await prisma.transaction.create({
         data: {
           userId: session.user.id,
