@@ -56,10 +56,18 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Deposit failed");
+      if (!res.ok) {
+        const raw = data.error ?? data.message ?? data;
+        throw new Error(
+          typeof raw === "string" ? raw : JSON.stringify(raw)
+        );
+      }
 
       if (tab === "mpesa") {
         setMessage(data.message ?? "Check your phone for the M-Pesa prompt");
+        if (data.transactionId) {
+          pollDepositStatus(data.transactionId);
+        }
       } else if (tab === "crypto") {
         setCryptoResult(data);
         if (data.status === "completed" && data.balance != null) {
@@ -105,6 +113,41 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
     await navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const pollDepositStatus = (transactionId: string) => {
+    let attempts = 0;
+    const maxAttempts = 20; // ~60 seconds at 3s intervals
+
+    const interval = setInterval(async () => {
+      attempts++;
+      try {
+        const res = await fetch(`/api/payments/status/${transactionId}`);
+        const data = await res.json();
+
+        if (data.status === "completed") {
+          clearInterval(interval);
+          setMessage(`Deposit of $${data.amount} confirmed!`);
+          setError("");
+          if (data.balance !== undefined) onSuccess(data.balance);
+          return;
+        }
+
+        if (data.status === "failed") {
+          clearInterval(interval);
+          setError("Payment failed or was cancelled. Please try again.");
+          setMessage("");
+          return;
+        }
+      } catch {
+        // network hiccup — keep polling, don't surface an error for a transient miss
+      }
+
+      if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        setMessage("Still waiting for confirmation. Check back in a moment, or refresh.");
+      }
+    }, 3000);
   };
 
   const tabs: { id: Tab; label: string; icon: typeof Smartphone }[] = [

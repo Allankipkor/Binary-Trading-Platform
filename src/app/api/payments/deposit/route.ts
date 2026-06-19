@@ -90,8 +90,8 @@ export async function POST(req: Request) {
             metadata: JSON.stringify({
               amountKes,
               phone: mpesaPhone,
-              checkoutRequestId: stk.CheckoutRequestID,
-              merchantRequestId: stk.MerchantRequestID,
+              checkoutRequestId: stk.checkoutRequestId,
+              merchantRequestId: stk.merchantRequestId,
             }),
           },
         });
@@ -101,7 +101,7 @@ export async function POST(req: Request) {
           method: "mpesa",
           message: stk.CustomerMessage,
           amountKes,
-          checkoutRequestId: stk.CheckoutRequestID,
+          checkoutRequestId: stk.checkoutRequestId,
         });
       } catch (err) {
         await prisma.transaction.update({
