@@ -795,7 +795,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                 </div>
 
                 <button
-                  onClick={() => { setNavMenuOpen(false); router.push("/help"); }}
+                  onClick={() => { setNavMenuOpen(false); router.push("/support"); }}
                   className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06] hover:bg-white/[0.03] transition text-left"
                 >
                   <span className="flex items-center gap-3 text-sm font-semibold text-white">
@@ -816,7 +816,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                 </button>
 
                 <button
-                  onClick={() => { setNavMenuOpen(false); router.push("/live-chat"); }}
+                  onClick={() => { setNavMenuOpen(false); router.push("/support"); }}
                   className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06] hover:bg-white/[0.03] transition text-left"
                 >
                   <span className="flex items-center gap-3 text-sm font-semibold text-white">
