@@ -334,7 +334,12 @@ export function OrderPanel({
   const btnBase = "rounded-xl font-bold text-white text-sm flex items-center justify-center transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed";
 
   return (
-    <div className={`flex flex-col gap-0 relative ${compact ? "" : "h-full"}`}>
+    <div className={`flex flex-col gap-0 relative ${compact ? "h-full" : "h-full"}`}>
+
+      {/* Scrollable region: everything except the CTA buttons. In compact
+          (mobile) mode this scrolls independently so the trade buttons stay
+          pinned just above the bottom nav, matching TagBinary. */}
+      <div className={compact ? "flex-1 overflow-y-auto overscroll-contain" : ""}>
 
       {/* ── Auto / Manual ── */}
       <div className="px-2.5 pt-2 pb-1.5 border-b border-white/[0.06]">
@@ -458,16 +463,21 @@ export function OrderPanel({
         </div>
       )}
 
-      {/* ── Payout info ── */}
-      <div className="px-2.5 pt-1.5 pb-0.5 flex justify-between text-[11px] text-gray-500">
-        <span>{selectedAsset.name.replace(" Index", "")}</span>
-        <span className="text-[#3B82F6] font-bold">{selectedAsset.payout}% payout</span>
       </div>
+      {/* ── end scrollable region ── */}
 
-      {/* ── CTA buttons or STOP button ── */}
-      <div className="px-2.5 pb-2 pt-1.5 grid grid-cols-2 gap-2">
-        {autoRunning ? (
-          <>
+      {/* ── Pinned bottom block: payout info + CTA buttons (stays above bottom nav) ── */}
+      <div className={compact ? "shrink-0" : ""}>
+        {/* ── Payout info ── */}
+        <div className="px-2.5 pt-1.5 pb-0.5 flex justify-between text-[11px] text-gray-500">
+          <span>{selectedAsset.name.replace(" Index", "")}</span>
+          <span className="text-[#3B82F6] font-bold">{selectedAsset.payout}% payout</span>
+        </div>
+
+        {/* ── CTA buttons or STOP button ── */}
+        <div className="px-2.5 pb-2 pt-1.5 grid grid-cols-2 gap-2">
+          {autoRunning ? (
+            <>
             {/* Left: greyed-out original button showing what's running */}
             <button disabled className={`${btnBase} ${upColor} flex-col gap-0.5 h-14 opacity-40`}>
               <div className="flex items-center gap-1.5">
@@ -517,7 +527,9 @@ export function OrderPanel({
             </button>
           </>
         )}
+        </div>
       </div>
+      {/* ── end pinned bottom block ── */}
 
       {/* ── Insufficient balance popup ── */}
       {showInsufficientPopup && (
