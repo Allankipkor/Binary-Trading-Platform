@@ -90,13 +90,25 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
   const [accountMode, setAccountMode] = useState<"real" | "demo">("real");
   const [accountDropdown, setAccountDropdown] = useState(false);
   const [navMenuOpen, setNavMenuOpen] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [appliedSignal, setAppliedSignal] = useState<{ digit: number; nonce: number } | null>(null);
+
+  const handleUseSignal = (market: "Even/Odd" | "Over/Under" | "Match/Differ", direction: string, digit?: number) => {
+    setContractType(market as ContractType);
+    if (digit !== undefined) {
+      setAppliedSignal({ digit, nonce: Date.now() });
+    }
+    setMobileTab("trade");
+  };
 
   const [demoBalance, setDemoBalance] = useState(10000);
   const displayBalance = accountMode === "real" ? balance : demoBalance;
   const [timeLeft, setTimeLeft] = useState<Record<string, number>>({});
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const desktopCanvasRef = useRef<HTMLCanvasElement>(null);
+  const mobileCanvasRef = useRef<HTMLCanvasElement>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
+  const mobileChartContainerRef = useRef<HTMLDivElement>(null);
 
   const syncFromApi = useCallback(async () => {
     try {
@@ -148,22 +160,22 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
     return () => clearInterval(priceInterval);
   }, [isAuthenticated, selectedAsset.id]);
 
-  // Redraw chart on container resize
+  // Redraw chart on container resize — observe both desktop and mobile containers
   useEffect(() => {
-    const container = chartContainerRef.current;
-    if (!container) return;
+    const desktopContainer = chartContainerRef.current;
+    const mobileContainer = mobileChartContainerRef.current;
     const ro = new ResizeObserver(() => {
       setPriceHistory((h) => [...h]);
     });
-    ro.observe(container);
+    if (desktopContainer) ro.observe(desktopContainer);
+    if (mobileContainer) ro.observe(mobileContainer);
     return () => ro.disconnect();
   }, []);
 
-  // Draw chart
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const container = chartContainerRef.current;
-    if (!canvas || !container) return;
+  // Reusable draw routine — called once per visible canvas so desktop and
+  // mobile both render the live line independently (they don't share a canvas).
+  const drawChartOnCanvas = useCallback((canvas: HTMLCanvasElement | null) => {
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
@@ -200,7 +212,6 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
     const isUp = priceHistory[priceHistory.length - 1] >= priceHistory[priceHistory.length - 2];
     const color = isUp ? "#22c55e" : "#ef4444";
 
-    // Smooth the line slightly using quadratic curves between points for a softer look
     const points = priceHistory.map((p, i) => ({
       x: padding + (i / (priceHistory.length - 1)) * (w - padding * 2),
       y: h - padding - ((p - min) / range) * (h - padding * 2),
@@ -226,7 +237,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
     ctx.stroke();
     ctx.restore();
 
-    // Cloudy gradient fill — taller, more diffuse fade with multiple stops
+    // Cloudy gradient fill
     const grad = ctx.createLinearGradient(0, 0, 0, h);
     grad.addColorStop(0, isUp ? "rgba(34,197,94,0.22)" : "rgba(239,68,68,0.22)");
     grad.addColorStop(0.35, isUp ? "rgba(34,197,94,0.10)" : "rgba(239,68,68,0.10)");
@@ -276,6 +287,12 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
     ctx.lineWidth = 1;
     ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
   }, [priceHistory, price]);
+
+  // Draw to both canvases (whichever is actually mounted/visible) whenever data changes
+  useEffect(() => {
+    drawChartOnCanvas(desktopCanvasRef.current);
+    drawChartOnCanvas(mobileCanvasRef.current);
+  }, [drawChartOnCanvas]);
 
   // Persist demo balance changes to the server (authenticated users only)
   const demoBalanceRef = useRef(demoBalance);
@@ -447,6 +464,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
     onStakeChange: setStake,
     onPlaceTrade: (direction: "up" | "down", meta?: { digit?: number; contractType?: string; digitDirection?: string }) => placeTrade(direction, meta),
     lastSettledProfit,
+    appliedSignal,
   };
 
   if (sessionStatus === "loading") {
@@ -510,7 +528,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
               <Menu className="w-5 h-5" />
             </button>
             <span className="text-base sm:text-lg font-extrabold tracking-tight select-none">
-              <span className="text-[#3B82F6]">OPEN</span><span className="text-white">MARKET</span>
+              <span className="text-[#3B82F6]">SHABIKI</span><span className="text-white">MARKET</span>
             </span>
           </div>
 
@@ -622,7 +640,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
           <aside className="fixed left-0 top-0 bottom-0 w-72 bg-[#0a0c12] border-r border-white/[0.07] z-50 flex flex-col">
             <div className="flex items-center justify-between px-4 h-16 border-b border-white/[0.07]">
               <span className="text-base font-extrabold tracking-tight select-none">
-                <span className="text-[#3B82F6]">OPEN</span><span className="text-white">MARKET</span>
+                <span className="text-[#3B82F6]">SHABIKI</span><span className="text-white">MARKET</span>
               </span>
               <button
                 onClick={() => setNavMenuOpen(false)}
@@ -648,14 +666,13 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                 <LayoutList className="w-5 h-5 text-[#3B82F6]" />
                 Trade History
               </Link>
-              <Link
-                href="/ai"
-                onClick={() => setNavMenuOpen(false)}
-                className="flex items-center gap-3 px-3 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/5 transition text-sm font-medium"
+              <button
+                onClick={() => { setNavMenuOpen(false); setScannerOpen(true); }}
+                className="flex items-center gap-3 px-3 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/5 transition text-sm font-medium text-left"
               >
                 <Sparkles className="w-5 h-5 text-[#3B82F6]" />
-                AI Assistant
-              </Link>
+                AI Entry Scanner
+              </button>
             </nav>
             {isAuthenticated && (
               <div className="p-4 border-t border-white/[0.07]">
@@ -710,7 +727,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
             ref={chartContainerRef}
             className="flex-1 relative bg-[#070809] min-h-[180px] m-3 rounded-xl border border-white/[0.08] overflow-hidden"
           >
-            <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+            <canvas ref={desktopCanvasRef} className="absolute inset-0 w-full h-full" />
 
             {/* Asset name + live price/change — overlaid top-left */}
             <div className="absolute top-3 left-3 z-10">
@@ -822,8 +839,8 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
 
             {/* Chart card — asset info and price overlaid, TagBinary style */}
             <div className="px-2 sm:px-3 py-2 bg-[#0a0c12] shrink-0">
-              <div className="h-[20vh] sm:h-[26vh] min-h-[140px] max-h-[220px] relative bg-[#070809] rounded-xl border border-white/[0.08] overflow-hidden">
-                <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+              <div ref={mobileChartContainerRef} className="h-[20vh] sm:h-[26vh] min-h-[140px] max-h-[220px] relative bg-[#070809] rounded-xl border border-white/[0.08] overflow-hidden">
+                <canvas ref={mobileCanvasRef} className="absolute inset-0 w-full h-full" />
 
                 {/* Asset name + live price/change — overlaid top-left */}
                 <div className="absolute top-2 left-2 z-10">
@@ -924,11 +941,14 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
             <div>
               <p className="text-white font-semibold text-base mb-1">AI Trading Assistant</p>
               <p className="text-gray-400 text-xs leading-relaxed">
-                Get real-time trade signals, market analysis, and risk insights powered by AI.
+                Scan live tick patterns to find the statistically strongest entry across markets.
               </p>
             </div>
-            <button className="px-5 py-2.5 rounded-xl bg-[#3B82F6] text-white text-sm font-semibold min-h-[44px]">
-              Coming soon
+            <button
+              onClick={() => setScannerOpen(true)}
+              className="px-5 py-2.5 rounded-xl bg-[#3B82F6] text-white text-sm font-semibold min-h-[44px]"
+            >
+              Open Entry Scanner
             </button>
           </div>
         )}
@@ -978,6 +998,14 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
       </div>
 
       <DepositModal open={depositOpen} onClose={() => setDepositOpen(false)} onSuccess={syncFromApi} />
+
+      {scannerOpen && (
+        <EntryScannerModal
+          priceHistory={priceHistory}
+          onClose={() => setScannerOpen(false)}
+          onUseSignal={handleUseSignal}
+        />
+      )}
     </div>
   );
 }
@@ -1039,6 +1067,200 @@ function LiveDigitTracker({ price, priceHistory }: { price: number; priceHistory
               </div>
             );
           })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── EntryScannerModal ──
+// Runs a real statistical scan over the live priceHistory window to surface
+// the currently strongest-edge market + direction, mirroring TagBinary's
+// "Deep Scan for Best Market" tool.
+type ScanMarket = "Even/Odd" | "Over/Under" | "Match/Differ";
+
+interface ScanResult {
+  market: ScanMarket;
+  direction: string;
+  digit?: number;
+  confidence: number; // 0-100
+  reasoning: string;
+}
+
+function getLastDigit(val: number): number {
+  return Math.round(val * 100) % 10;
+}
+
+function runMarketScan(market: ScanMarket, priceHistory: number[]): ScanResult {
+  const digits = priceHistory.map(getLastDigit);
+  const total = digits.length || 1;
+
+  if (market === "Even/Odd") {
+    const evenCount = digits.filter((d) => d % 2 === 0).length;
+    const oddCount = total - evenCount;
+    const evenPct = (evenCount / total) * 100;
+    const oddPct = (oddCount / total) * 100;
+    const direction = evenPct >= oddPct ? "Even" : "Odd";
+    const pct = Math.max(evenPct, oddPct);
+    return {
+      market,
+      direction,
+      confidence: Math.round(pct),
+      reasoning: `${direction} has appeared in ${pct.toFixed(1)}% of the last ${total} ticks, the stronger side over this window.`,
+    };
+  }
+
+  if (market === "Over/Under") {
+    let best = { digit: 4, overPct: 50, underPct: 50, skew: 0 };
+    for (let d = 0; d <= 8; d++) {
+      const overCount = digits.filter((x) => x > d).length;
+      const underCount = total - overCount;
+      const overPct = (overCount / total) * 100;
+      const underPct = (underCount / total) * 100;
+      const skew = Math.abs(overPct - underPct);
+      if (skew > best.skew) best = { digit: d, overPct, underPct, skew };
+    }
+    const direction = best.overPct >= best.underPct ? "Over" : "Under";
+    const pct = Math.max(best.overPct, best.underPct);
+    return {
+      market,
+      direction,
+      digit: best.digit,
+      confidence: Math.round(pct),
+      reasoning: `Splitting at digit ${best.digit}, "${direction}" has hit ${pct.toFixed(1)}% of the last ${total} ticks — the widest skew found.`,
+    };
+  }
+
+  const counts = Array(10).fill(0);
+  digits.forEach((d) => counts[d]++);
+  const minCount = Math.min(...counts);
+  const candidateDigits = counts
+    .map((c, d) => ({ d, c }))
+    .filter((x) => x.c === minCount)
+    .map((x) => x.d);
+  const chosenDigit = candidateDigits[0];
+  const pct = 100 - (minCount / total) * 100;
+  return {
+    market,
+    direction: "Match",
+    digit: chosenDigit,
+    confidence: Math.round(pct),
+    reasoning: `Digit ${chosenDigit} appeared least often (${minCount}/${total} ticks) — historically due, giving Match its best edge right now.`,
+  };
+}
+
+function EntryScannerModal({
+  priceHistory,
+  onClose,
+  onUseSignal,
+}: {
+  priceHistory: number[];
+  onClose: () => void;
+  onUseSignal: (market: ScanMarket, direction: string, digit?: number) => void;
+}) {
+  const [selectedMarket, setSelectedMarket] = useState<ScanMarket>("Even/Odd");
+  const [scanning, setScanning] = useState(false);
+  const [scansRun, setScansRun] = useState(0);
+  const [result, setResult] = useState<ScanResult | null>(null);
+
+  const handleScan = () => {
+    setScanning(true);
+    setResult(null);
+    setTimeout(() => {
+      const r = runMarketScan(selectedMarket, priceHistory);
+      setResult(r);
+      setScansRun((n) => Math.min(3, n + 1));
+      setScanning(false);
+    }, 900);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+      <div className="w-full max-w-sm bg-[#0d0f17] border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07]">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#3B82F6]/15 border border-[#3B82F6]/25 flex items-center justify-center">
+              <Sparkles className="w-4.5 h-4.5 text-[#3B82F6]" />
+            </div>
+            <h2 className="text-base font-bold text-white">Entry Scanner</h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5 text-gray-400">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="px-5 py-4 space-y-4">
+          <p className="text-xs text-gray-400 leading-relaxed">
+            Pick the market category you want to scan. The scanner analyzes the live tick window and surfaces the statistically strongest entry right now.
+          </p>
+
+          <div>
+            <label className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block mb-1.5">Market</label>
+            <select
+              value={selectedMarket}
+              onChange={(e) => { setSelectedMarket(e.target.value as ScanMarket); setResult(null); }}
+              className="w-full bg-[#141822] border border-white/[0.08] rounded-xl px-3.5 py-3 text-sm text-white outline-none focus:border-[#3B82F6]/50 appearance-none"
+            >
+              <option value="Even/Odd">Even / Odd</option>
+              <option value="Over/Under">Over / Under</option>
+              <option value="Match/Differ">Match / Differ</option>
+            </select>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs text-gray-500">Ready to scan</span>
+              <span className="text-xs text-gray-400 font-semibold">{scansRun}/3</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+              <div
+                className="h-full bg-[#3B82F6] transition-all duration-500"
+                style={{ width: `${(scansRun / 3) * 100}%` }}
+              />
+            </div>
+          </div>
+
+          {result && (
+            <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/25 p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Signal found</span>
+                <span className="text-xs font-bold text-emerald-400">{result.confidence}% confidence</span>
+              </div>
+              <p className="text-white font-bold text-lg">
+                {result.direction}
+                {result.digit !== undefined && <span className="text-emerald-400"> · digit {result.digit}</span>}
+              </p>
+              <p className="text-[11px] text-gray-400 leading-relaxed">{result.reasoning}</p>
+              <button
+                onClick={() => { onUseSignal(result.market, result.direction, result.digit); onClose(); }}
+                className="w-full mt-2 h-10 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-bold transition active:scale-95"
+              >
+                Use This Signal
+              </button>
+            </div>
+          )}
+
+          <button
+            onClick={handleScan}
+            disabled={scanning}
+            className="w-full h-12 rounded-xl bg-[#3B82F6] hover:bg-blue-500 disabled:opacity-60 text-white text-sm font-bold flex items-center justify-center gap-2 transition"
+          >
+            {scanning ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                Scanning…
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                {result ? "Scan Again" : "Deep Scan for Best Market"}
+              </>
+            )}
+          </button>
+
+          <p className="text-[10px] text-gray-600 text-center leading-relaxed">
+            Based on the last {priceHistory.length} live ticks. Past tick patterns don&apos;t guarantee future outcomes.
+          </p>
         </div>
       </div>
     </div>

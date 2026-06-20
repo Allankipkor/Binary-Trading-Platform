@@ -23,6 +23,9 @@ interface OrderPanelProps {
     meta?: { digit?: number; contractType?: string; digitDirection?: string }
   ) => Promise<boolean>;
   lastSettledProfit?: { id: string; profit: number } | null;
+  /** Set when the AI scanner applies a recommended digit; bumping the nonce
+   *  re-triggers the effect even if the digit value repeats. */
+  appliedSignal?: { digit: number; nonce: number } | null;
   compact?: boolean;
 }
 
@@ -111,10 +114,17 @@ export function OrderPanel({
   onStakeChange,
   onPlaceTrade,
   lastSettledProfit,
+  appliedSignal,
   compact = false,
 }: OrderPanelProps) {
   const [tradeMode, setTradeMode] = useState<"auto" | "manual">("auto");
   const [selectedDigit, setSelectedDigit] = useState(5);
+
+  // Apply a digit recommended by the AI Entry Scanner whenever a new signal arrives
+  useEffect(() => {
+    if (appliedSignal) setSelectedDigit(appliedSignal.digit);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appliedSignal?.nonce]);
 
   // Risk controls (Auto mode only)
   const [targetProfit, setTargetProfit] = useState(200);
