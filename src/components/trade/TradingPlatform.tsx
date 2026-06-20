@@ -93,8 +93,15 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [appliedSignal, setAppliedSignal] = useState<{ digit: number; nonce: number } | null>(null);
 
-  const handleUseSignal = (market: "Even/Odd" | "Over/Under" | "Match/Differ", direction: string, digit?: number) => {
+  const handleUseSignal = (
+    market: "Even/Odd" | "Over/Under" | "Match/Differ",
+    direction: string,
+    digit: number | undefined,
+    assetId: string
+  ) => {
     setContractType(market as ContractType);
+    const asset = ASSETS.find((a) => a.id === assetId);
+    if (asset) setSelectedAsset(asset);
     if (digit !== undefined) {
       setAppliedSignal({ digit, nonce: Date.now() });
     }
@@ -671,7 +678,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                 className="flex items-center gap-3 px-3 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/5 transition text-sm font-medium text-left"
               >
                 <Sparkles className="w-5 h-5 text-[#3B82F6]" />
-                AI Entry Scanner
+                AI
               </button>
             </nav>
             {isAuthenticated && (
@@ -939,7 +946,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
               <Sparkles className="w-8 h-8 text-[#3B82F6]" />
             </div>
             <div>
-              <p className="text-white font-semibold text-base mb-1">AI Trading Assistant</p>
+              <p className="text-white font-semibold text-base mb-1">AI</p>
               <p className="text-gray-400 text-xs leading-relaxed">
                 Scan live tick patterns to find the statistically strongest entry across markets.
               </p>
@@ -948,7 +955,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
               onClick={() => setScannerOpen(true)}
               className="px-5 py-2.5 rounded-xl bg-[#3B82F6] text-white text-sm font-semibold min-h-[44px]"
             >
-              Open Entry Scanner
+              AI
             </button>
           </div>
         )}
@@ -1001,7 +1008,6 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
 
       {scannerOpen && (
         <EntryScannerModal
-          priceHistory={priceHistory}
           onClose={() => setScannerOpen(false)}
           onUseSignal={handleUseSignal}
         />
@@ -1074,25 +1080,24 @@ function LiveDigitTracker({ price, priceHistory }: { price: number; priceHistory
 }
 
 // ── EntryScannerModal ──
-// Runs a real statistical scan over the live priceHistory window to surface
-// the currently strongest-edge market + direction, mirroring TagBinary's
-// "Deep Scan for Best Market" tool.
+// Walks every asset with a few real live ticks each, scores them for the
+// selected market type, and surfaces the single best asset + direction —
+// mirroring TagBinary's "Deep Scan for Best Market" tool with real data.
 type ScanMarket = "Even/Odd" | "Over/Under" | "Match/Differ";
 
-interface ScanResult {
-  market: ScanMarket;
+interface AssetScanResult {
+  assetId: string;
+  assetName: string;
   direction: string;
   digit?: number;
   confidence: number; // 0-100
-  reasoning: string;
 }
 
 function getLastDigit(val: number): number {
   return Math.round(val * 100) % 10;
 }
 
-function runMarketScan(market: ScanMarket, priceHistory: number[]): ScanResult {
-  const digits = priceHistory.map(getLastDigit);
+function scoreDigits(market: ScanMarket, digits: number[]): { direction: string; digit?: number; confidence: number } {
   const total = digits.length || 1;
 
   if (market === "Even/Odd") {
@@ -1101,88 +1106,108 @@ function runMarketScan(market: ScanMarket, priceHistory: number[]): ScanResult {
     const evenPct = (evenCount / total) * 100;
     const oddPct = (oddCount / total) * 100;
     const direction = evenPct >= oddPct ? "Even" : "Odd";
-    const pct = Math.max(evenPct, oddPct);
-    return {
-      market,
-      direction,
-      confidence: Math.round(pct),
-      reasoning: `${direction} has appeared in ${pct.toFixed(1)}% of the last ${total} ticks, the stronger side over this window.`,
-    };
+    return { direction, confidence: Math.max(evenPct, oddPct) };
   }
 
   if (market === "Over/Under") {
-    let best = { digit: 4, overPct: 50, underPct: 50, skew: 0 };
+    let best = { digit: 4, skew: 0, overPct: 50, underPct: 50 };
     for (let d = 0; d <= 8; d++) {
       const overCount = digits.filter((x) => x > d).length;
       const underCount = total - overCount;
       const overPct = (overCount / total) * 100;
       const underPct = (underCount / total) * 100;
       const skew = Math.abs(overPct - underPct);
-      if (skew > best.skew) best = { digit: d, overPct, underPct, skew };
+      if (skew > best.skew) best = { digit: d, skew, overPct, underPct };
     }
     const direction = best.overPct >= best.underPct ? "Over" : "Under";
-    const pct = Math.max(best.overPct, best.underPct);
-    return {
-      market,
-      direction,
-      digit: best.digit,
-      confidence: Math.round(pct),
-      reasoning: `Splitting at digit ${best.digit}, "${direction}" has hit ${pct.toFixed(1)}% of the last ${total} ticks — the widest skew found.`,
-    };
+    return { direction, digit: best.digit, confidence: Math.max(best.overPct, best.underPct) };
   }
 
+  // Match/Differ — least-frequent digit gets the Match call (best edge, since
+  // Match pays far more than Differ).
   const counts = Array(10).fill(0);
   digits.forEach((d) => counts[d]++);
   const minCount = Math.min(...counts);
-  const candidateDigits = counts
-    .map((c, d) => ({ d, c }))
-    .filter((x) => x.c === minCount)
-    .map((x) => x.d);
-  const chosenDigit = candidateDigits[0];
-  const pct = 100 - (minCount / total) * 100;
-  return {
-    market,
-    direction: "Match",
-    digit: chosenDigit,
-    confidence: Math.round(pct),
-    reasoning: `Digit ${chosenDigit} appeared least often (${minCount}/${total} ticks) — historically due, giving Match its best edge right now.`,
-  };
+  const chosenDigit = counts.findIndex((c) => c === minCount);
+  const confidence = 100 - (minCount / total) * 100;
+  return { direction: "Match", digit: chosenDigit, confidence };
+}
+
+async function fetchAssetTicks(assetId: string, count: number): Promise<number[]> {
+  const ticks: number[] = [];
+  for (let i = 0; i < count; i++) {
+    try {
+      const res = await fetch(`/api/prices?assetId=${assetId}&tick=true`);
+      if (res.ok) {
+        const data = await res.json();
+        if (typeof data?.price === "number") ticks.push(data.price);
+      }
+    } catch {
+      // skip a failed tick, keep going
+    }
+  }
+  return ticks;
 }
 
 function EntryScannerModal({
-  priceHistory,
   onClose,
   onUseSignal,
 }: {
-  priceHistory: number[];
   onClose: () => void;
-  onUseSignal: (market: ScanMarket, direction: string, digit?: number) => void;
+  onUseSignal: (market: ScanMarket, direction: string, digit: number | undefined, assetId: string) => void;
 }) {
   const [selectedMarket, setSelectedMarket] = useState<ScanMarket>("Even/Odd");
   const [scanning, setScanning] = useState(false);
-  const [scansRun, setScansRun] = useState(0);
-  const [result, setResult] = useState<ScanResult | null>(null);
+  const [pass, setPass] = useState(0);
+  const [currentAssetName, setCurrentAssetName] = useState("");
+  const [result, setResult] = useState<AssetScanResult | null>(null);
 
-  const handleScan = () => {
+  const TOTAL_PASSES = 3;
+  const TICKS_PER_ASSET = 6;
+
+  const handleScan = async () => {
     setScanning(true);
     setResult(null);
-    setTimeout(() => {
-      const r = runMarketScan(selectedMarket, priceHistory);
-      setResult(r);
-      setScansRun((n) => Math.min(3, n + 1));
-      setScanning(false);
-    }, 900);
+    setPass(0);
+
+    let best: AssetScanResult | null = null;
+
+    for (let p = 1; p <= TOTAL_PASSES; p++) {
+      setPass(p);
+      // Each pass re-checks every asset and keeps the best signal seen so far,
+      // so later passes can only improve or confirm the result — same idea as
+      // TagBinary's progress bar filling toward a final "Best market" call.
+      for (const asset of ASSETS) {
+        setCurrentAssetName(asset.name);
+        const ticks = await fetchAssetTicks(asset.id, TICKS_PER_ASSET);
+        if (ticks.length < 3) continue; // not enough real data this round
+        const digits = ticks.map(getLastDigit);
+        const scored = scoreDigits(selectedMarket, digits);
+        if (!best || scored.confidence > best.confidence) {
+          best = {
+            assetId: asset.id,
+            assetName: asset.name,
+            direction: scored.direction,
+            digit: scored.digit,
+            confidence: Math.round(scored.confidence),
+          };
+        }
+      }
+    }
+
+    setResult(best);
+    setScanning(false);
   };
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="w-full max-w-sm bg-[#0d0f17] border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07]">
+      <div className="w-full max-w-sm bg-[#0d0f17] border border-white/10 rounded-3xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07] sticky top-0 bg-[#0d0f17] z-10">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-[#3B82F6]/15 border border-[#3B82F6]/25 flex items-center justify-center">
               <Sparkles className="w-4.5 h-4.5 text-[#3B82F6]" />
             </div>
-            <h2 className="text-base font-bold text-white">Entry Scanner</h2>
+            <h2 className="text-base font-bold text-white">AI Scanner</h2>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5 text-gray-400">
             <X className="w-5 h-5" />
@@ -1191,7 +1216,7 @@ function EntryScannerModal({
 
         <div className="px-5 py-4 space-y-4">
           <p className="text-xs text-gray-400 leading-relaxed">
-            Pick the market category you want to scan. The scanner analyzes the live tick window and surfaces the statistically strongest entry right now.
+            Pick the market category you want to scan. The deep scanner walks every asset and surfaces the best entry point based on live tick patterns.
           </p>
 
           <div>
@@ -1199,7 +1224,8 @@ function EntryScannerModal({
             <select
               value={selectedMarket}
               onChange={(e) => { setSelectedMarket(e.target.value as ScanMarket); setResult(null); }}
-              className="w-full bg-[#141822] border border-white/[0.08] rounded-xl px-3.5 py-3 text-sm text-white outline-none focus:border-[#3B82F6]/50 appearance-none"
+              disabled={scanning}
+              className="w-full bg-[#141822] border border-white/[0.08] rounded-xl px-3.5 py-3 text-sm text-white outline-none focus:border-[#3B82F6]/50 appearance-none disabled:opacity-50"
             >
               <option value="Even/Odd">Even / Odd</option>
               <option value="Over/Under">Over / Under</option>
@@ -1209,31 +1235,50 @@ function EntryScannerModal({
 
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs text-gray-500">Ready to scan</span>
-              <span className="text-xs text-gray-400 font-semibold">{scansRun}/3</span>
+              <span className="text-xs text-gray-500 truncate pr-2">
+                {scanning ? currentAssetName : result ? result.assetName : "Ready to scan"}
+              </span>
+              <span className="text-xs text-gray-400 font-semibold shrink-0">{pass}/{TOTAL_PASSES}</span>
             </div>
             <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
               <div
-                className="h-full bg-[#3B82F6] transition-all duration-500"
-                style={{ width: `${(scansRun / 3) * 100}%` }}
+                className={`h-full transition-all duration-500 ${result ? "bg-emerald-500" : "bg-[#3B82F6]"}`}
+                style={{ width: `${(pass / TOTAL_PASSES) * 100}%` }}
               />
             </div>
           </div>
 
           {result && (
-            <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/25 p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Signal found</span>
-                <span className="text-xs font-bold text-emerald-400">{result.confidence}% confidence</span>
+            <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/25 p-4 space-y-3">
+              <div className="flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                <p className="text-sm text-white leading-snug">
+                  <span className="font-bold">Best market:</span> {result.assetName} | {selectedMarket} {result.direction}
+                  {" "}| <span className="text-emerald-400 font-bold">Quality {result.confidence}%</span>
+                </p>
               </div>
-              <p className="text-white font-bold text-lg">
-                {result.direction}
-                {result.digit !== undefined && <span className="text-emerald-400"> · digit {result.digit}</span>}
-              </p>
-              <p className="text-[11px] text-gray-400 leading-relaxed">{result.reasoning}</p>
+
+              <div className="space-y-2 pt-1">
+                <div>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide mb-1">Selected Market</p>
+                  <div className="bg-[#141822] rounded-lg px-3 py-2 text-sm text-white font-semibold">{result.assetName}</div>
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide mb-1">Trade Type</p>
+                  <div className="bg-[#141822] rounded-lg px-3 py-2 text-sm text-white font-semibold">{selectedMarket}</div>
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide mb-1">Prediction (Auto)</p>
+                  <div className="bg-[#141822] rounded-lg px-3 py-2 text-sm text-white font-semibold">
+                    {result.direction}
+                    {result.digit !== undefined && ` · digit ${result.digit}`}
+                  </div>
+                </div>
+              </div>
+
               <button
-                onClick={() => { onUseSignal(result.market, result.direction, result.digit); onClose(); }}
-                className="w-full mt-2 h-10 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-bold transition active:scale-95"
+                onClick={() => { onUseSignal(selectedMarket, result.direction, result.digit, result.assetId); onClose(); }}
+                className="w-full mt-1 h-10 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-bold transition active:scale-95"
               >
                 Use This Signal
               </button>
@@ -1248,18 +1293,18 @@ function EntryScannerModal({
             {scanning ? (
               <>
                 <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                Scanning…
+                Scanning {currentAssetName || "…"}
               </>
             ) : (
               <>
                 <Sparkles className="w-4 h-4" />
-                {result ? "Scan Again" : "Deep Scan for Best Market"}
+                {result ? "Re-scan for Best Market" : "Deep Scan for Best Market"}
               </>
             )}
           </button>
 
           <p className="text-[10px] text-gray-600 text-center leading-relaxed">
-            Based on the last {priceHistory.length} live ticks. Past tick patterns don&apos;t guarantee future outcomes.
+            Scans {ASSETS.length} assets with live ticks per pass. Past tick patterns don&apos;t guarantee future outcomes.
           </p>
         </div>
       </div>
