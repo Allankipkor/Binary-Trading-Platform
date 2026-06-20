@@ -845,8 +845,8 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
             </div>
 
             {/* Chart card — asset info and price overlaid, TagBinary style */}
-            <div className="px-2 sm:px-3 py-2 bg-[#0a0c12] shrink-0">
-              <div ref={mobileChartContainerRef} className="h-[20vh] sm:h-[26vh] min-h-[140px] max-h-[220px] relative bg-[#070809] rounded-xl border border-white/[0.08] overflow-hidden">
+            <div className="px-2 py-1.5 bg-[#0a0c12] shrink-0">
+              <div ref={mobileChartContainerRef} className="h-[15vh] min-h-[100px] max-h-[160px] relative bg-[#070809] rounded-xl border border-white/[0.08] overflow-hidden">
                 <canvas ref={mobileCanvasRef} className="absolute inset-0 w-full h-full" />
 
                 {/* Asset name + live price/change — overlaid top-left */}
@@ -1038,24 +1038,24 @@ function LiveDigitTracker({ price, priceHistory }: { price: number; priceHistory
   const maxPct = Math.max(...percentages);
 
   return (
-    <div className="px-3 pt-3 pb-2.5 bg-[#0a0c12] border-b border-white/[0.06] shrink-0">
+    <div className="px-2.5 pt-2.5 pb-2 bg-[#0a0c12] border-b border-white/[0.06] shrink-0">
       <div className="relative">
         {/* Moving cursor arrow */}
         <div
-          className="absolute -top-1 flex flex-col items-center transition-all duration-300 ease-out"
-          style={{ left: `calc(${(currentDigit / 9) * 100}% - 6px)` }}
+          className="absolute -top-0.5 flex flex-col items-center transition-all duration-300 ease-out"
+          style={{ left: `calc(${(currentDigit / 9) * 100}% - 5px)` }}
         >
-          <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-b-[7px] border-l-transparent border-r-transparent border-b-[#3B82F6]" />
+          <div className="w-0 h-0 border-l-[5px] border-r-[5px] border-b-[6px] border-l-transparent border-r-transparent border-b-[#3B82F6]" />
         </div>
 
-        <div className="flex justify-between gap-1 pt-3">
+        <div className="flex justify-between gap-1 pt-2.5">
           {percentages.map((pct, d) => {
             const isCurrent = d === currentDigit;
             const isHot = pct === maxPct && maxPct > 0;
             return (
-              <div key={d} className="flex flex-col items-center gap-1 flex-1">
+              <div key={d} className="flex flex-col items-center gap-0.5 flex-1">
                 <div
-                  className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold border-2 transition-all ${
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-bold border-2 transition-all ${
                     isCurrent
                       ? "bg-[#3B82F6] border-[#3B82F6] text-white scale-110 shadow-[0_0_12px_rgba(59,130,246,0.5)]"
                       : isHot
@@ -1065,7 +1065,7 @@ function LiveDigitTracker({ price, priceHistory }: { price: number; priceHistory
                 >
                   {d}
                 </div>
-                <span className={`text-[9px] sm:text-[10px] font-bold tabular-nums ${
+                <span className={`text-[8px] sm:text-[9px] font-bold tabular-nums ${
                   d === 0 ? "text-rose-400" : isCurrent ? "text-[#60a5fa]" : "text-gray-500"
                 }`}>
                   {pct.toFixed(1)}%

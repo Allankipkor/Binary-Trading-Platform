@@ -62,15 +62,15 @@ function AdjustField({
   const labelColor = color === "text-emerald-400" ? "text-emerald-500/80" : "text-red-500/80";
 
   return (
-    <div className="bg-[#141822] rounded-xl p-2 border border-white/[0.06]">
-      <div className="flex items-center justify-between mb-1">
-        <span className={`text-[9px] font-bold uppercase tracking-wide ${labelColor}`}>{label}</span>
+    <div className="bg-[#141822] rounded-xl p-1.5 border border-white/[0.06]">
+      <div className="flex items-center justify-between mb-0.5">
+        <span className={`text-[8px] font-bold uppercase tracking-wide ${labelColor}`}>{label}</span>
         {onToggle !== undefined && (
           <button
             onClick={onToggle}
-            className={`w-7 h-3.5 rounded-full relative transition-colors ${enabled ? dotColor : "bg-white/20"}`}
+            className={`w-6 h-3 rounded-full relative transition-colors ${enabled ? dotColor : "bg-white/20"}`}
           >
-            <span className={`absolute top-0.5 w-2.5 h-2.5 rounded-full bg-white transition-all ${enabled ? "left-3.5" : "left-0.5"}`} />
+            <span className={`absolute top-0.5 w-2 h-2 rounded-full bg-white transition-all ${enabled ? "left-3" : "left-0.5"}`} />
           </button>
         )}
       </div>
@@ -82,22 +82,22 @@ function AdjustField({
           onChange={(e) => setRaw(e.target.value)}
           onBlur={commit}
           onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") setEditing(false); }}
-          className={`w-full bg-transparent ${color} text-base font-bold tabular-nums outline-none border-b-2 ${borderColor} pb-0.5 mb-1.5`}
+          className={`w-full bg-transparent ${color} text-sm font-bold tabular-nums outline-none border-b-2 ${borderColor} pb-0.5 mb-1`}
         />
       ) : (
         <button
           onClick={() => { setRaw(String(value)); setEditing(true); }}
-          className={`w-full text-left ${color} text-base font-bold tabular-nums mb-1.5 ${enabled === false ? "opacity-30" : ""}`}
+          className={`w-full text-left ${color} text-sm font-bold tabular-nums mb-1 ${enabled === false ? "opacity-30" : ""}`}
         >
           ${value.toLocaleString()}
         </button>
       )}
       <div className="flex gap-1">
-        <button onClick={() => adjust(-1)} className="flex-1 h-7 rounded-lg bg-white/[0.07] hover:bg-white/[0.15] active:scale-95 flex items-center justify-center transition">
-          <Minus className="w-3.5 h-3.5 text-gray-300" />
+        <button onClick={() => adjust(-1)} className="flex-1 h-6 rounded-lg bg-white/[0.07] hover:bg-white/[0.15] active:scale-95 flex items-center justify-center transition">
+          <Minus className="w-3 h-3 text-gray-300" />
         </button>
-        <button onClick={() => adjust(1)} className="flex-1 h-7 rounded-lg bg-white/[0.07] hover:bg-white/[0.15] active:scale-95 flex items-center justify-center transition">
-          <Plus className="w-3.5 h-3.5 text-gray-300" />
+        <button onClick={() => adjust(1)} className="flex-1 h-6 rounded-lg bg-white/[0.07] hover:bg-white/[0.15] active:scale-95 flex items-center justify-center transition">
+          <Plus className="w-3 h-3 text-gray-300" />
         </button>
       </div>
     </div>
@@ -337,13 +337,13 @@ export function OrderPanel({
     <div className={`flex flex-col gap-0 relative ${compact ? "" : "h-full"}`}>
 
       {/* ── Auto / Manual ── */}
-      <div className="px-3 pt-2.5 pb-2 border-b border-white/[0.06]">
+      <div className="px-2.5 pt-2 pb-1.5 border-b border-white/[0.06]">
         <div className="flex bg-white/[0.04] rounded-xl p-0.5 gap-0.5">
           {(["auto", "manual"] as const).map((m) => (
             <button
               key={m}
               onClick={() => { if (!autoRunning) setTradeMode(m); }}
-              className={`flex-1 py-2 rounded-lg text-xs font-bold capitalize transition ${
+              className={`flex-1 py-1.5 rounded-lg text-xs font-bold capitalize transition ${
                 tradeMode === m ? "bg-[#3B82F6] text-white shadow" : "text-gray-400 hover:text-gray-200"
               }`}
             >
@@ -354,17 +354,17 @@ export function OrderPanel({
       </div>
 
       {/* ── Stake ── */}
-      <div className="px-3 pt-2 pb-2 border-b border-white/[0.06]">
-        <div className="flex items-center justify-between bg-white/[0.04] rounded-xl px-3 py-2 mb-2">
-          <button onClick={() => adjustStake(-1)} className="w-8 h-8 rounded-lg bg-white/[0.08] hover:bg-white/[0.16] active:scale-95 flex items-center justify-center transition">
-            <Minus className="w-4 h-4 text-gray-200" />
+      <div className="px-2.5 pt-1.5 pb-1.5 border-b border-white/[0.06]">
+        <div className="flex items-center justify-between bg-white/[0.04] rounded-xl px-3 py-1.5 mb-1.5">
+          <button onClick={() => adjustStake(-1)} className="w-7 h-7 rounded-lg bg-white/[0.08] hover:bg-white/[0.16] active:scale-95 flex items-center justify-center transition">
+            <Minus className="w-3.5 h-3.5 text-gray-200" />
           </button>
           <div className="flex items-baseline gap-1">
             <span className="text-gray-400 text-sm">$</span>
-            <span className="text-white text-2xl font-bold tabular-nums">{stake}</span>
+            <span className="text-white text-xl font-bold tabular-nums">{stake}</span>
           </div>
-          <button onClick={() => adjustStake(1)} className="w-8 h-8 rounded-lg bg-white/[0.08] hover:bg-white/[0.16] active:scale-95 flex items-center justify-center transition">
-            <Plus className="w-4 h-4 text-gray-200" />
+          <button onClick={() => adjustStake(1)} className="w-7 h-7 rounded-lg bg-white/[0.08] hover:bg-white/[0.16] active:scale-95 flex items-center justify-center transition">
+            <Plus className="w-3.5 h-3.5 text-gray-200" />
           </button>
         </div>
         <div className="flex gap-1.5">
@@ -372,7 +372,7 @@ export function OrderPanel({
             <button
               key={s}
               onClick={() => onStakeChange(s)}
-              className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold border transition ${
+              className={`flex-1 py-1 rounded-lg text-[11px] font-bold border transition ${
                 stake === s ? "bg-[#1e3a5f] border-[#3B82F6] text-[#60a5fa]" : "border-white/[0.08] bg-white/[0.03] text-gray-400 hover:bg-white/[0.08]"
               }`}
             >
@@ -384,19 +384,19 @@ export function OrderPanel({
 
       {/* ── Risk controls (Auto mode only) ── */}
       {tradeMode === "auto" && (
-        <div className="px-3 pt-2 pb-2 border-b border-white/[0.06]">
+        <div className="px-2.5 pt-1.5 pb-1.5 border-b border-white/[0.06]">
           <div className="grid grid-cols-3 gap-1.5">
             <AdjustField label="Target profit" value={targetProfit} onChange={setTargetProfit} color="text-emerald-400" enabled={targetEnabled} onToggle={() => setTargetEnabled((v) => !v)} />
             <AdjustField label="Stop loss" value={stopLoss} onChange={setStopLoss} color="text-red-400" enabled={stopEnabled} onToggle={() => setStopEnabled((v) => !v)} />
-            <div className="bg-[#141822] rounded-xl p-2 border border-white/[0.06]">
-              <span className="text-[9px] text-amber-500/80 font-bold uppercase tracking-wide block mb-1">Multiplier</span>
-              <p className="text-amber-400 text-base font-bold mb-1.5">×{multiplier}</p>
+            <div className="bg-[#141822] rounded-xl p-1.5 border border-white/[0.06]">
+              <span className="text-[8px] text-amber-500/80 font-bold uppercase tracking-wide block mb-0.5">Multiplier</span>
+              <p className="text-amber-400 text-sm font-bold mb-1">×{multiplier}</p>
               <div className="flex gap-1">
-                <button onClick={() => setMultiplierIdx((i) => Math.max(0, i - 1))} className="flex-1 h-7 rounded-lg bg-white/[0.07] hover:bg-white/[0.15] active:scale-95 flex items-center justify-center transition">
-                  <Minus className="w-3.5 h-3.5 text-gray-300" />
+                <button onClick={() => setMultiplierIdx((i) => Math.max(0, i - 1))} className="flex-1 h-6 rounded-lg bg-white/[0.07] hover:bg-white/[0.15] active:scale-95 flex items-center justify-center transition">
+                  <Minus className="w-3 h-3 text-gray-300" />
                 </button>
-                <button onClick={() => setMultiplierIdx((i) => Math.min(MULTIPLIER_OPTIONS.length - 1, i + 1))} className="flex-1 h-7 rounded-lg bg-white/[0.07] hover:bg-white/[0.15] active:scale-95 flex items-center justify-center transition">
-                  <Plus className="w-3.5 h-3.5 text-gray-300" />
+                <button onClick={() => setMultiplierIdx((i) => Math.min(MULTIPLIER_OPTIONS.length - 1, i + 1))} className="flex-1 h-6 rounded-lg bg-white/[0.07] hover:bg-white/[0.15] active:scale-95 flex items-center justify-center transition">
+                  <Plus className="w-3 h-3 text-gray-300" />
                 </button>
               </div>
             </div>
@@ -406,7 +406,7 @@ export function OrderPanel({
 
       {/* ── LIVE status bar (shown while auto-loop is running) ── */}
       {autoRunning && (
-        <div className="mx-3 mt-2 mb-1 rounded-xl bg-amber-500/10 border border-amber-500/30 px-3 py-2 flex items-center justify-between">
+        <div className="mx-2.5 mt-1.5 mb-1 rounded-xl bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-amber-400 text-xs font-bold uppercase tracking-wider">
@@ -420,13 +420,13 @@ export function OrderPanel({
       )}
 
       {/* ── Digit selector (plain, selectable) ── */}
-      <div className="px-3 pt-2 pb-2 border-b border-white/[0.06]">
+      <div className="px-2.5 pt-1.5 pb-1.5 border-b border-white/[0.06]">
         <div className="flex justify-between gap-1">
           {Array.from({ length: 10 }, (_, d) => d).map((d) => (
             <button
               key={d}
               onClick={() => setSelectedDigit(d)}
-              className={`flex-1 h-8 rounded-lg text-[13px] font-bold transition min-w-0 ${
+              className={`flex-1 h-7 rounded-lg text-[12px] font-bold transition min-w-0 ${
                 d === selectedDigit
                   ? "bg-[#3B82F6] text-white"
                   : "bg-[#141822] text-gray-400 border border-white/[0.07] hover:bg-white/[0.06]"
@@ -439,7 +439,7 @@ export function OrderPanel({
       </div>
 
       {/* ── Session stats ── */}
-      <div className="px-3 py-2 border-b border-white/[0.06] flex items-center justify-between">
+      <div className="px-2.5 py-1.5 border-b border-white/[0.06] flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <Zap className="w-3 h-3 text-gray-500" />
           <span className="text-[10px] text-gray-500">
@@ -453,23 +453,23 @@ export function OrderPanel({
 
       {/* ── Error ── */}
       {tradeError && (
-        <div className="mx-3 mt-2 text-[11px] text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl px-3 py-2 text-center font-medium">
+        <div className="mx-2.5 mt-1.5 text-[11px] text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl px-3 py-1.5 text-center font-medium">
           {tradeError}
         </div>
       )}
 
       {/* ── Payout info ── */}
-      <div className="px-3 pt-2 pb-1 flex justify-between text-[11px] text-gray-500">
+      <div className="px-2.5 pt-1.5 pb-0.5 flex justify-between text-[11px] text-gray-500">
         <span>{selectedAsset.name.replace(" Index", "")}</span>
         <span className="text-[#3B82F6] font-bold">{selectedAsset.payout}% payout</span>
       </div>
 
       {/* ── CTA buttons or STOP button ── */}
-      <div className="px-3 pb-3 pt-2 grid grid-cols-2 gap-2.5">
+      <div className="px-2.5 pb-2 pt-1.5 grid grid-cols-2 gap-2">
         {autoRunning ? (
           <>
             {/* Left: greyed-out original button showing what's running */}
-            <button disabled className={`${btnBase} ${upColor} flex-col gap-0.5 h-16 opacity-40`}>
+            <button disabled className={`${btnBase} ${upColor} flex-col gap-0.5 h-14 opacity-40`}>
               <div className="flex items-center gap-1.5">
                 <span className="w-5 h-5 rounded-full bg-white/20 text-[11px] font-bold flex items-center justify-center">{selectedDigit}</span>
                 <span>{autoDirection === "up" ? upLabel : downLabel}</span>
@@ -479,7 +479,7 @@ export function OrderPanel({
             {/* Right: STOP button */}
             <button
               onClick={handleStop}
-              className="h-16 rounded-xl font-bold text-white text-sm flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-400 active:scale-95 transition"
+              className="h-14 rounded-xl font-bold text-white text-sm flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-400 active:scale-95 transition"
             >
               <Square className="w-4 h-4 fill-white" />
               STOP
@@ -490,7 +490,7 @@ export function OrderPanel({
             <button
               onClick={() => handleTrade("up")}
               disabled={sessionBlocked}
-              className={`${btnBase} ${upColor} flex-col gap-0.5 h-16`}
+              className={`${btnBase} ${upColor} flex-col gap-0.5 h-14`}
             >
               <div className="flex items-center gap-1.5">
                 <span className="w-5 h-5 rounded-full bg-white/20 text-[11px] font-bold flex items-center justify-center">{selectedDigit}</span>
@@ -504,7 +504,7 @@ export function OrderPanel({
             <button
               onClick={() => handleTrade("down")}
               disabled={sessionBlocked}
-              className={`${btnBase} ${downColor} flex-col gap-0.5 h-16`}
+              className={`${btnBase} ${downColor} flex-col gap-0.5 h-14`}
             >
               <div className="flex items-center gap-1.5">
                 <span className="w-5 h-5 rounded-full bg-white/20 text-[11px] font-bold flex items-center justify-center">{selectedDigit}</span>
