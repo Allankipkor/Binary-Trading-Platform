@@ -1,17 +1,29 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ArrowUpFromLine,
   BarChart3,
   CheckCircle2,
   ChevronDown,
+  ChevronRight,
+  Copy,
+  Globe,
+  Gift,
+  HelpCircle,
   LayoutList,
   LogOut,
   Menu,
+  MessageCircle,
+  Moon,
+  Settings,
+  ShieldCheck,
   Sparkles,
   TrendingUp,
+  Wallet,
   X,
   XCircle,
 } from "lucide-react";
@@ -54,6 +66,7 @@ function mapApiTrade(t: {
 
 export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
   const { data: session, status: sessionStatus } = useSession();
+  const router = useRouter();
   const isAuthenticated = !forceDemo && !!session?.user;
 
   const [selectedAsset, setSelectedAsset] = useState<Asset>(ASSETS[0]);
@@ -90,6 +103,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
   const [accountMode, setAccountMode] = useState<"real" | "demo">("real");
   const [accountDropdown, setAccountDropdown] = useState(false);
   const [navMenuOpen, setNavMenuOpen] = useState(false);
+  const [profile, setProfile] = useState<{ name: string | null; email: string; phone: string | null } | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [appliedSignal, setAppliedSignal] = useState<{ digit: number; nonce: number } | null>(null);
 
@@ -379,6 +393,17 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
     if (isAuthenticated) syncFromApi();
   }, [isAuthenticated, sessionStatus, syncFromApi]);
 
+  // Fetch profile details (name/email/phone) for the nav drawer identity card
+  useEffect(() => {
+    if (!navMenuOpen || !isAuthenticated || profile) return;
+    fetch("/api/user/me")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.user) setProfile(data.user);
+      })
+      .catch(() => {});
+  }, [navMenuOpen, isAuthenticated, profile]);
+
   const placeTrade = async (
     direction: "up" | "down",
     meta?: { digit?: number; contractType?: string; digitDirection?: string }
@@ -644,54 +669,177 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
       {navMenuOpen && (
         <>
           <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setNavMenuOpen(false)} />
-          <aside className="fixed left-0 top-0 bottom-0 w-72 bg-[#0a0c12] border-r border-white/[0.07] z-50 flex flex-col">
-            <div className="flex items-center justify-between px-4 h-16 border-b border-white/[0.07]">
-              <span className="text-base font-extrabold tracking-tight select-none">
-                <span className="text-[#3B82F6]">SHABIKI</span><span className="text-white">MARKET</span>
-              </span>
+          <aside className="fixed left-0 top-0 bottom-0 w-[85%] max-w-[340px] bg-[#0a0c12] border-r border-white/[0.07] z-50 flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 h-14 border-b border-white/[0.07] shrink-0">
               <button
                 onClick={() => setNavMenuOpen(false)}
-                className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5"
+                className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5"
               >
                 <X className="w-5 h-5" />
               </button>
-            </div>
-            <nav className="flex-1 overflow-y-auto p-4 flex flex-col gap-1">
-              <Link
-                href="/"
-                onClick={() => setNavMenuOpen(false)}
-                className="flex items-center gap-3 px-3 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/5 transition text-sm font-medium"
-              >
-                <TrendingUp className="w-5 h-5 text-[#3B82F6]" />
-                Trade
-              </Link>
-              <Link
-                href="/history"
-                onClick={() => setNavMenuOpen(false)}
-                className="flex items-center gap-3 px-3 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/5 transition text-sm font-medium"
-              >
-                <LayoutList className="w-5 h-5 text-[#3B82F6]" />
-                Trade History
-              </Link>
-              <button
-                onClick={() => { setNavMenuOpen(false); setScannerOpen(true); }}
-                className="flex items-center gap-3 px-3 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/5 transition text-sm font-medium text-left"
-              >
-                <Sparkles className="w-5 h-5 text-[#3B82F6]" />
-                AI
+              <h2 className="text-sm font-bold text-white">Menu</h2>
+              <button className="flex items-center gap-1 text-gray-400 hover:text-white px-1.5 py-1 rounded-lg hover:bg-white/5">
+                <Globe className="w-4 h-4" />
+                <span className="text-xs font-semibold">EN</span>
               </button>
-            </nav>
-            {isAuthenticated && (
-              <div className="p-4 border-t border-white/[0.07]">
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              {/* User identity */}
+              {isAuthenticated ? (
                 <button
-                  onClick={() => signOut({ callbackUrl: "/" })}
-                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-rose-400 hover:bg-white/5 transition text-sm font-medium"
+                  onClick={() => { setNavMenuOpen(false); router.push("/account/settings"); }}
+                  className="w-full flex items-center gap-3 px-4 py-4 border-b border-white/[0.07] hover:bg-white/[0.03] transition"
                 >
-                  <LogOut className="w-5 h-5" />
-                  Sign out
+                  <div className="w-12 h-12 rounded-full bg-[#3B82F6] flex items-center justify-center text-lg font-bold shrink-0">
+                    {(profile?.name || profile?.email || session?.user?.email || "U")[0]?.toUpperCase()}
+                  </div>
+                  <div className="text-left min-w-0">
+                    <p className="text-sm font-bold text-white truncate">
+                      {profile?.phone || profile?.name || "Set up your profile"}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {profile?.email ?? session?.user?.email ?? ""}
+                    </p>
+                  </div>
                 </button>
-              </div>
-            )}
+              ) : (
+                <div className="px-4 py-4 border-b border-white/[0.07]">
+                  <Link
+                    href="/login"
+                    onClick={() => setNavMenuOpen(false)}
+                    className="w-full flex items-center justify-center h-11 rounded-xl bg-[#3B82F6] hover:bg-blue-500 text-white text-sm font-bold transition"
+                  >
+                    Sign In
+                  </Link>
+                </div>
+              )}
+
+              {/* Menu items */}
+              <nav className="flex flex-col">
+                <button
+                  onClick={() => { setNavMenuOpen(false); router.push("/account/settings"); }}
+                  className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06] hover:bg-white/[0.03] transition text-left"
+                >
+                  <span className="flex items-center gap-3 text-sm font-semibold text-white">
+                    <Settings className="w-5 h-5 text-gray-400" />
+                    Account settings
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-gray-600" />
+                </button>
+
+                <button
+                  onClick={() => { setNavMenuOpen(false); setDepositOpen(true); }}
+                  className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06] hover:bg-white/[0.03] transition text-left"
+                >
+                  <span className="flex items-center gap-3 text-sm font-semibold text-white">
+                    <Wallet className="w-5 h-5 text-gray-400" />
+                    Deposit
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-gray-600" />
+                </button>
+
+                <button
+                  onClick={() => { setNavMenuOpen(false); router.push("/withdraw"); }}
+                  className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06] hover:bg-white/[0.03] transition text-left"
+                >
+                  <span className="flex items-center gap-3 text-sm font-semibold text-white">
+                    <ArrowUpFromLine className="w-5 h-5 text-gray-400" />
+                    Withdraw
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-gray-600" />
+                </button>
+
+                <button
+                  onClick={() => { setNavMenuOpen(false); router.push("/history"); }}
+                  className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06] hover:bg-white/[0.03] transition text-left"
+                >
+                  <span className="flex items-center gap-3 text-sm font-semibold text-white">
+                    <LayoutList className="w-5 h-5 text-gray-400" />
+                    History
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-gray-600" />
+                </button>
+
+                <button
+                  onClick={() => { setNavMenuOpen(false); router.push("/copy-trading"); }}
+                  className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06] hover:bg-white/[0.03] transition text-left"
+                >
+                  <span className="flex items-center gap-3 text-sm font-semibold text-white">
+                    <Copy className="w-5 h-5 text-gray-400" />
+                    Copy Trading
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-gray-600" />
+                </button>
+
+                <button
+                  onClick={() => { setNavMenuOpen(false); router.push("/refer"); }}
+                  className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06] hover:bg-purple-500/10 transition text-left bg-purple-500/5"
+                >
+                  <span className="flex items-center gap-3 text-sm font-semibold text-purple-300">
+                    <Gift className="w-5 h-5 text-purple-400" />
+                    Refer & Earn
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-purple-400/60" />
+                </button>
+
+                <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06]">
+                  <span className="flex items-center gap-3 text-sm font-semibold text-white">
+                    <Moon className="w-5 h-5 text-gray-400" />
+                    Dark theme
+                  </span>
+                  <div className="w-11 h-6 rounded-full bg-[#3B82F6] relative cursor-not-allowed opacity-80" title="Always on">
+                    <span className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-white" />
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => { setNavMenuOpen(false); router.push("/help"); }}
+                  className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06] hover:bg-white/[0.03] transition text-left"
+                >
+                  <span className="flex items-center gap-3 text-sm font-semibold text-white">
+                    <HelpCircle className="w-5 h-5 text-gray-400" />
+                    Help Centre
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => { setNavMenuOpen(false); router.push("/responsible-trading"); }}
+                  className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06] hover:bg-white/[0.03] transition text-left"
+                >
+                  <span className="flex items-center gap-3 text-sm font-semibold text-white">
+                    <ShieldCheck className="w-5 h-5 text-gray-400" />
+                    Responsible Trading
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-gray-600" />
+                </button>
+
+                <button
+                  onClick={() => { setNavMenuOpen(false); router.push("/live-chat"); }}
+                  className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06] hover:bg-white/[0.03] transition text-left"
+                >
+                  <span className="flex items-center gap-3 text-sm font-semibold text-white">
+                    <MessageCircle className="w-5 h-5 text-gray-400" />
+                    Live Chat
+                  </span>
+                </button>
+
+                {isAuthenticated && (
+                  <button
+                    onClick={() => signOut({ callbackUrl: "/" })}
+                    className="flex items-center gap-3 px-4 py-3.5 border-b border-white/[0.06] hover:bg-rose-500/5 transition text-left"
+                  >
+                    <LogOut className="w-5 h-5 text-rose-400" />
+                    <span className="text-sm font-semibold text-rose-400">Log out</span>
+                  </button>
+                )}
+              </nav>
+            </div>
+
+            <div className="px-4 py-2.5 text-[10px] text-gray-600 border-t border-white/[0.07]">
+              {new Date().toISOString().replace("T", " ").slice(0, 19)} GMT
+            </div>
           </aside>
         </>
       )}
