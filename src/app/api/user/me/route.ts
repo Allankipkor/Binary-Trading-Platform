@@ -19,7 +19,6 @@ export async function GET() {
       phone: true,
       balance: true,
       demoBalance: true,
-      status: true,
       createdAt: true,
     },
   });
