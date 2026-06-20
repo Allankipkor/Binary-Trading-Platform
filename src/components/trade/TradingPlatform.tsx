@@ -825,30 +825,29 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
       <div className="flex md:hidden flex-1 flex-col overflow-hidden min-h-0">
         {mobileTab === "trade" && (
           <>
-            {/* Contract tabs */}
-            <div className="flex border-b border-white/[0.07] bg-[#0a0c12] shrink-0 overflow-x-auto scrollbar-hide snap-x">
-              {(["Matches/Differs", "Even/Odd", "Over/Under"] as const).map((t) => {
-                const mapped = t === "Matches/Differs" ? "Match/Differ" : t;
-                const isActive = contractType === mapped;
-                return (
-                  <button
-                    key={t}
-                    onClick={() => setContractType(mapped as ContractType)}
-                    className={`flex-1 min-w-[76px] py-2.5 text-[10px] xs:text-[11px] sm:text-xs font-semibold border-b-2 transition whitespace-nowrap snap-start min-h-[44px] ${
-                      isActive ? "border-[#3B82F6] text-white" : "border-transparent text-gray-500"
-                    }`}
-                  >
-                    {t}
-                  </button>
-                );
-              })}
-            </div>
+            {/* Scrollable content: contract tabs, chart, digit tracker, and
+                order panel (including Match/Differ) all scroll together as
+                one continuous list. Only the bottom nav stays fixed. */}
+            <div className="flex-1 overflow-y-auto overscroll-contain bg-[#0d0f17] pb-[64px]">
+              {/* Contract tabs */}
+              <div className="flex border-b border-white/[0.07] bg-[#0a0c12] overflow-x-auto scrollbar-hide snap-x">
+                {(["Matches/Differs", "Even/Odd", "Over/Under"] as const).map((t) => {
+                  const mapped = t === "Matches/Differs" ? "Match/Differ" : t;
+                  const isActive = contractType === mapped;
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => setContractType(mapped as ContractType)}
+                      className={`flex-1 min-w-[76px] py-2.5 text-[10px] xs:text-[11px] sm:text-xs font-semibold border-b-2 transition whitespace-nowrap snap-start min-h-[44px] ${
+                        isActive ? "border-[#3B82F6] text-white" : "border-transparent text-gray-500"
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  );
+                })}
+              </div>
 
-            {/* Scrollable content: chart, digit tracker, and order panel scroll
-                underneath the pinned contract tabs above. Bottom padding
-                reserves space so content isn't hidden behind the floating
-                CTA block + bottom nav, which sit fixed on top. */}
-            <div className="flex-1 overflow-y-auto overscroll-contain bg-[#0d0f17] pb-[160px]">
               {/* Chart card — asset info and price overlaid, TagBinary style */}
               <div className="px-2 py-1.5 bg-[#0a0c12] shrink-0">
                 <div ref={mobileChartContainerRef} className="h-[22vh] min-h-[150px] max-h-[230px] relative bg-[#070809] rounded-xl border border-white/[0.08] overflow-hidden">

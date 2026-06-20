@@ -458,17 +458,8 @@ export function OrderPanel({
         </div>
       )}
 
-      {/* ── Bottom block: payout info + CTA buttons ──
-          On mobile (compact) this floats fixed above the bottom nav, on top
-          of the scrolling content. On desktop it stays inline as before. */}
-      <div
-        className={
-          compact
-            ? "fixed left-0 right-0 z-40 bg-[#0d0f17] border-t border-white/[0.08] shadow-[0_-4px_16px_rgba(0,0,0,0.4)]"
-            : ""
-        }
-        style={compact ? { bottom: "calc(56px + env(safe-area-inset-bottom, 0px))" } : undefined}
-      >
+      {/* ── Bottom block: payout info + CTA buttons — scrolls inline with everything else ── */}
+      <div>
         {/* ── Payout info ── */}
         <div className="px-2.5 pt-1.5 pb-0.5 flex justify-between text-[11px] text-gray-500">
           <span>{selectedAsset.name.replace(" Index", "")}</span>
@@ -534,10 +525,7 @@ export function OrderPanel({
 
       {/* ── Insufficient balance popup ── */}
       {showInsufficientPopup && (
-        <div
-          className="fixed left-3 right-3 z-50"
-          style={{ bottom: "calc(56px + env(safe-area-inset-bottom, 0px) + 110px)" }}
-        >
+        <div className="sticky bottom-3 left-3 right-3 z-50 mx-2.5">
           <div className="bg-rose-500/95 backdrop-blur-sm rounded-2xl px-4 py-3 shadow-2xl flex items-center gap-2.5">
             <XCircle className="w-5 h-5 text-white shrink-0" />
             <div className="flex-1">
