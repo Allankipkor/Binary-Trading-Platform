@@ -334,12 +334,7 @@ export function OrderPanel({
   const btnBase = "rounded-xl font-bold text-white text-sm flex items-center justify-center transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed";
 
   return (
-    <div className={`flex flex-col gap-0 relative ${compact ? "h-full" : "h-full"}`}>
-
-      {/* Scrollable region: everything except the CTA buttons. In compact
-          (mobile) mode this scrolls independently so the trade buttons stay
-          pinned just above the bottom nav, matching TagBinary. */}
-      <div className={compact ? "flex-1 overflow-y-auto overscroll-contain" : ""}>
+    <div className="flex flex-col gap-0 relative">
 
       {/* ── Auto / Manual ── */}
       <div className="px-2.5 pt-2 pb-1.5 border-b border-white/[0.06]">
@@ -463,11 +458,17 @@ export function OrderPanel({
         </div>
       )}
 
-      </div>
-      {/* ── end scrollable region ── */}
-
-      {/* ── Pinned bottom block: payout info + CTA buttons (stays above bottom nav) ── */}
-      <div className={compact ? "shrink-0" : ""}>
+      {/* ── Bottom block: payout info + CTA buttons ──
+          On mobile (compact) this floats fixed above the bottom nav, on top
+          of the scrolling content. On desktop it stays inline as before. */}
+      <div
+        className={
+          compact
+            ? "fixed left-0 right-0 z-40 bg-[#0d0f17] border-t border-white/[0.08] shadow-[0_-4px_16px_rgba(0,0,0,0.4)]"
+            : ""
+        }
+        style={compact ? { bottom: "calc(56px + env(safe-area-inset-bottom, 0px))" } : undefined}
+      >
         {/* ── Payout info ── */}
         <div className="px-2.5 pt-1.5 pb-0.5 flex justify-between text-[11px] text-gray-500">
           <span>{selectedAsset.name.replace(" Index", "")}</span>
@@ -533,7 +534,10 @@ export function OrderPanel({
 
       {/* ── Insufficient balance popup ── */}
       {showInsufficientPopup && (
-        <div className="absolute bottom-24 left-3 right-3 z-50">
+        <div
+          className="fixed left-3 right-3 z-50"
+          style={{ bottom: "calc(56px + env(safe-area-inset-bottom, 0px) + 110px)" }}
+        >
           <div className="bg-rose-500/95 backdrop-blur-sm rounded-2xl px-4 py-3 shadow-2xl flex items-center gap-2.5">
             <XCircle className="w-5 h-5 text-white shrink-0" />
             <div className="flex-1">
@@ -551,7 +555,7 @@ export function OrderPanel({
 
       {/* ── Target/Stop session result modal ── */}
       {sessionResult && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm rounded-2xl">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm">
           <div className="bg-[#141822] border border-white/10 rounded-3xl p-6 w-[88%] max-w-sm text-center shadow-2xl">
             <div className={`w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center ${
               sessionResult === "target" ? "bg-emerald-500/15" : "bg-rose-500/15"

@@ -844,9 +844,11 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
               })}
             </div>
 
-            {/* Scrollable content: chart, digit tracker, and order panel all scroll together
-                underneath the pinned contract tabs above and bottom nav below */}
-            <div className="flex-1 overflow-y-auto overscroll-contain bg-[#0d0f17]">
+            {/* Scrollable content: chart, digit tracker, and order panel scroll
+                underneath the pinned contract tabs above. Bottom padding
+                reserves space so content isn't hidden behind the floating
+                CTA block + bottom nav, which sit fixed on top. */}
+            <div className="flex-1 overflow-y-auto overscroll-contain bg-[#0d0f17] pb-[160px]">
               {/* Chart card — asset info and price overlaid, TagBinary style */}
               <div className="px-2 py-1.5 bg-[#0a0c12] shrink-0">
                 <div ref={mobileChartContainerRef} className="h-[22vh] min-h-[150px] max-h-[230px] relative bg-[#070809] rounded-xl border border-white/[0.08] overflow-hidden">
@@ -933,7 +935,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
         )}
 
         {mobileTab === "positions" && (
-          <div className="flex-1 flex flex-col min-h-0 bg-[#0d0f17]">
+          <div className="flex-1 flex flex-col min-h-0 bg-[#0d0f17] pb-[64px]">
             <PositionsPanel
               positions={visiblePositions}
               closedTab={closedTab}
@@ -945,7 +947,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
         )}
 
         {mobileTab === "ai" && (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-[#0d0f17] px-6 text-center">
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-[#0d0f17] px-6 text-center pb-[64px]">
             <div className="w-16 h-16 rounded-full bg-[#3B82F6]/10 border border-[#3B82F6]/20 flex items-center justify-center">
               <Sparkles className="w-8 h-8 text-[#3B82F6]" />
             </div>
@@ -964,9 +966,9 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
           </div>
         )}
 
-        {/* Bottom nav */}
+        {/* Bottom nav — floats fixed over scrolling content, never part of document flow */}
         <nav
-          className="shrink-0 flex border-t border-white/[0.07] bg-[#0a0c12]"
+          className="fixed bottom-0 left-0 right-0 z-40 flex border-t border-white/[0.07] bg-[#0a0c12] shadow-[0_-4px_16px_rgba(0,0,0,0.4)]"
           style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
         >
           <button
