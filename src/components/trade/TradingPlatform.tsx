@@ -502,14 +502,14 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
 
   if (sessionStatus === "loading") {
     return (
-      <div className="min-h-screen bg-[#0a0c12] flex items-center justify-center">
+      <div className="min-h-[100dvh] bg-[#0a0c12] flex items-center justify-center">
         <div className="w-10 h-10 border-[3px] border-[#3B82F6] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="h-screen bg-[#0a0c12] text-white flex flex-col overflow-hidden">
+    <div className="h-[100dvh] bg-[#0a0c12] text-white flex flex-col overflow-hidden">
 
       {/* ── Toast notifications ── */}
       <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[100] w-[92%] max-w-sm flex flex-col gap-2 pointer-events-none">
@@ -549,7 +549,10 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
       </div>
 
       {/* ── Header ── */}
-      <header className="shrink-0 border-b border-white/[0.07] bg-[#0a0c12]/95 backdrop-blur z-30">
+      <header
+        className="shrink-0 border-b border-white/[0.07] bg-[#0a0c12]/95 backdrop-blur z-30"
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+      >
         <div className="flex items-center justify-between px-3 sm:px-4 lg:px-6 h-14 sm:h-16 gap-2 max-w-screen-2xl mx-auto w-full">
 
           {/* Left: hamburger + wordmark */}
