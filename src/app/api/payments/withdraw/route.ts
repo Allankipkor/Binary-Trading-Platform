@@ -5,14 +5,12 @@ import { prisma } from "@/lib/prisma";
 
 const schema = z.object({
   method: z.enum(["mpesa", "crypto"]),
-  amount: z.number().min(5).max(10000),
+  amount: z.number().min(50).max(150000),
   phone: z.string().optional(),
   walletAddress: z.string().optional(),
 });
 
 export async function GET() {
-  // Returns available balance + KYC status so the withdraw page can render
-  // the right balance and decide whether to show the "verify KYC" gate.
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -27,8 +25,6 @@ export async function GET() {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  // Real KYC submission/review doesn't exist yet — every account is
-  // "not_submitted" for now. Swap this for a real lookup once KYC ships.
   return NextResponse.json({
     balance: user.balance,
     phone: user.phone,
@@ -65,9 +61,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Wallet address required" }, { status: 400 });
     }
 
-    // FIX: destructure the SECOND transaction result — the first is the
-    // user balance update, the second is the actual Transaction record.
-    // The previous version returned the user's id as "transactionId".
     const [, transaction] = await prisma.$transaction([
       prisma.user.update({
         where: { id: session.user.id },

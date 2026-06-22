@@ -12,7 +12,7 @@ import {
 
 const schema = z.object({
   method: z.enum(["mpesa", "crypto", "card"]),
-  amount: z.number().min(1).max(10000),
+  amount: z.number().min(10).max(10000),
   phone: z.string().optional(),
 });
 
@@ -52,10 +52,6 @@ export async function POST(req: Request) {
       }
 
       const amountKes = usdToKes(amount);
-
-      // Safaricom Daraja requires a minimum of KES 1 per STK push; in practice
-      // amounts under ~KES 10 are frequently rejected by the sandbox/production
-      // API itself, separate from our own validation above.
       if (amountKes < 1) {
         return NextResponse.json(
           { error: "Amount is too small to convert to a valid M-Pesa charge" },
@@ -81,7 +77,7 @@ export async function POST(req: Request) {
           phone: mpesaPhone,
           amountKes,
           accountReference: reference,
-          transactionDesc: "OpenMarket deposit",
+          transactionDesc: "ShabikiMarket deposit",
         });
 
         await prisma.transaction.update({
