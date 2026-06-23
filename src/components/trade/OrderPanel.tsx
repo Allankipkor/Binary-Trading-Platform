@@ -167,6 +167,11 @@ export function OrderPanel({
     return () => clearTimeout(t);
   }, [showInsufficientPopup]);
 
+  // Tap-to-edit stake amount (mirrors the AdjustField pattern used for
+  // target profit / stop loss below)
+  const [editingStake, setEditingStake] = useState(false);
+  const [rawStake, setRawStake] = useState("");
+
   // Mirrors sessionPnl into a ref the instant it commits, so the settlement
   // effect below can read the *true current* P&L synchronously without
   // depending on when React chooses to run a setState updater callback.
@@ -366,10 +371,15 @@ export function OrderPanel({
   };
 
   const adjustStake = (delta: number) => {
-    const steps = [1, 5, 10, 25, 50, 100, 200, 500];
-    const idx = steps.findIndex((s) => s >= stake);
-    const cur = idx === -1 ? steps.length - 1 : idx;
-    onStakeChange(steps[Math.max(0, Math.min(steps.length - 1, cur + delta))]);
+    // Flat $1 steps — no more jumping 1 -> 5 -> 10 -> 25 via the preset tiers.
+    const next = Math.round((stake + delta) * 100) / 100; // avoid float drift
+    onStakeChange(Math.max(1, next));
+  };
+
+  const commitStake = () => {
+    const n = parseFloat(rawStake);
+    if (!isNaN(n) && n >= 1) onStakeChange(Math.round(n * 100) / 100);
+    setEditingStake(false);
   };
 
   const [upLabel, downLabel] = getLabels();
@@ -407,10 +417,30 @@ export function OrderPanel({
           <button onClick={() => adjustStake(-1)} className="w-7 h-7 rounded-lg bg-white/[0.08] hover:bg-white/[0.16] active:scale-95 flex items-center justify-center transition">
             <Minus className="w-3.5 h-3.5 text-gray-200" />
           </button>
-          <div className="flex items-baseline gap-1">
-            <span className="text-gray-400 text-sm">$</span>
-            <span className="text-white text-xl font-bold tabular-nums">{stake}</span>
-          </div>
+          {editingStake ? (
+            <div className="flex items-baseline gap-1">
+              <span className="text-gray-400 text-sm">$</span>
+              <input
+                autoFocus
+                type="number"
+                min={1}
+                step={1}
+                value={rawStake}
+                onChange={(e) => setRawStake(e.target.value)}
+                onBlur={commitStake}
+                onKeyDown={(e) => { if (e.key === "Enter") commitStake(); if (e.key === "Escape") setEditingStake(false); }}
+                className="w-20 bg-transparent text-white text-xl font-bold tabular-nums outline-none border-b-2 border-[#3B82F6] text-center"
+              />
+            </div>
+          ) : (
+            <button
+              onClick={() => { setRawStake(String(stake)); setEditingStake(true); }}
+              className="flex items-baseline gap-1"
+            >
+              <span className="text-gray-400 text-sm">$</span>
+              <span className="text-white text-xl font-bold tabular-nums">{stake}</span>
+            </button>
+          )}
           <button onClick={() => adjustStake(1)} className="w-7 h-7 rounded-lg bg-white/[0.08] hover:bg-white/[0.16] active:scale-95 flex items-center justify-center transition">
             <Plus className="w-3.5 h-3.5 text-gray-200" />
           </button>
@@ -429,6 +459,7 @@ export function OrderPanel({
           ))}
         </div>
       </div>
+
 
       {/* ── Risk controls (Auto mode only) ── */}
       {tradeMode === "auto" && (
