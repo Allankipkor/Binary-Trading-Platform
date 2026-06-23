@@ -6,7 +6,6 @@ import type { Asset } from "@/lib/assets";
 
 const CONTRACT_TYPES = ["Even/Odd", "Over/Under", "Match/Differ"] as const;
 const STAKE_PRESETS = [1, 5, 10, 25, 50, 100];
-const MULTIPLIER_OPTIONS = [2, 3, 5, 10, 20, 50, 100];
 
 type ContractType = (typeof CONTRACT_TYPES)[number];
 
@@ -22,7 +21,10 @@ interface OrderPanelProps {
     direction: "up" | "down",
     meta?: { digit?: number; contractType?: string; digitDirection?: string }
   ) => Promise<boolean>;
-  lastSettledProfit?: { id: string; profit: number } | null;
+  /** Queue of every settled trade since mount, so same-tick settlements
+   *  (e.g. two trades expiring on the same price update) are never dropped —
+   *  each one is processed individually for session P&L and target/stop checks. */
+  settledQueue?: { id: string; profit: number }[];
   /** Set when the AI scanner applies a recommended digit; bumping the nonce
    *  re-triggers the effect even if the digit value repeats. */
   appliedSignal?: { digit: number; nonce: number } | null;
@@ -113,7 +115,7 @@ export function OrderPanel({
   onContractTypeChange,
   onStakeChange,
   onPlaceTrade,
-  lastSettledProfit,
+  settledQueue,
   appliedSignal,
   compact = false,
 }: OrderPanelProps) {
@@ -129,27 +131,32 @@ export function OrderPanel({
   // Risk controls (Auto mode only)
   const [targetProfit, setTargetProfit] = useState(200);
   const [stopLoss, setStopLoss] = useState(100);
-  const [multiplierIdx, setMultiplierIdx] = useState(0);
   const [targetEnabled, setTargetEnabled] = useState(true);
   const [stopEnabled, setStopEnabled] = useState(true);
-  const multiplier = MULTIPLIER_OPTIONS[multiplierIdx];
 
   // Session tracking
   const [sessionPnl, setSessionPnl] = useState(0);
   const [sessionTrades, setSessionTrades] = useState(0);
   const [sessionWins, setSessionWins] = useState(0);
-  const [lastProcessedId, setLastProcessedId] = useState<string | null>(null);
+  const processedIdsRef = useRef<Set<string>>(new Set());
   const [sessionResult, setSessionResult] = useState<"target" | "stop" | null>(null);
 
-  // Auto-loop state
+  // Auto-mode state. There is intentionally no loop and no "stop requested"
+  // flag here: auto mode places exactly one trade per click and reports its
+  // result, so there's nothing ongoing to ask to stop mid-flight.
   const [autoRunning, setAutoRunning] = useState(false);
   const [autoDirection, setAutoDirection] = useState<"up" | "down" | null>(null);
   const [autoMeta, setAutoMeta] = useState<{ digit?: number; contractType?: string; digitDirection?: string } | undefined>();
-  const [liveTrades, setLiveTrades] = useState(0); // count of open auto trades
-  const stopRequestedRef = useRef(false);
-  // Resolves the moment the *next* trade settlement arrives, so the auto-loop
-  // can wait on real settlement instead of guessing with a fixed timer —
-  // this is what makes target profit / stop loss actually strict.
+  const [liveTrades, setLiveTrades] = useState(0); // 1 while the single auto trade is pending, else 0
+  // Mirrors autoRunning synchronously. `autoRunning` state only updates on
+  // the next render, so a rapid double-click/tap on the trade button can
+  // pass `if (autoRunningRef.current) return` twice before React ever
+  // re-renders the disabled button. This ref is set the instant the trade
+  // is accepted, closing that gap and guaranteeing only one trade fires.
+  const autoRunningRef = useRef(false);
+  // Resolves the moment the placed trade's settlement arrives, so the
+  // single-trade flow can wait on real settlement instead of guessing with
+  // a fixed timer — this is what makes target profit / stop loss strict.
   const settlementWaiterRef = useRef<(() => void) | null>(null);
 
   // Insufficient balance popup
@@ -160,91 +167,132 @@ export function OrderPanel({
     return () => clearTimeout(t);
   }, [showInsufficientPopup]);
 
-  // Track settled trades for session P&L and auto-loop feedback
+  // Mirrors sessionPnl into a ref the instant it commits, so the settlement
+  // effect below can read the *true current* P&L synchronously without
+  // depending on when React chooses to run a setState updater callback.
+  const sessionPnlRef = useRef(sessionPnl);
   useEffect(() => {
-    if (!lastSettledProfit || lastSettledProfit.id === lastProcessedId) return;
-    setLastProcessedId(lastSettledProfit.id);
+    sessionPnlRef.current = sessionPnl;
+  }, [sessionPnl]);
 
-    const newPnl = sessionPnl + lastSettledProfit.profit;
-    const newTrades = sessionTrades + 1;
-    const newWins = sessionWins + (lastSettledProfit.profit > 0 ? 1 : 0);
+  // Applies settled trades to session P&L and reports auto-mode result.
+  // Still processes EVERY new entry in settledQueue defensively (not just
+  // the latest) in case more than one ever lands in a single update — but
+  // with auto mode placing exactly one trade at a time, this is normally
+  // exactly one entry, so target/stop reflects that single trade's own
+  // profit/loss rather than an accumulated total across multiple trades.
+  useEffect(() => {
+    if (!settledQueue || settledQueue.length === 0) return;
+    const unprocessed = settledQueue.filter((s) => !processedIdsRef.current.has(s.id));
+    if (unprocessed.length === 0) return;
 
-    setSessionPnl(+(newPnl.toFixed(2)));
-    setSessionTrades(newTrades);
-    setSessionWins(newWins);
-    setLiveTrades((n) => Math.max(0, n - 1));
+    for (const settlement of unprocessed) processedIdsRef.current.add(settlement.id);
 
-    if (tradeMode === "auto") {
-      if (targetEnabled && newPnl >= targetProfit) {
-        stopRequestedRef.current = true;
-        setAutoRunning(false);
-        setSessionResult("target");
-      } else if (stopEnabled && newPnl <= -stopLoss) {
-        stopRequestedRef.current = true;
-        setAutoRunning(false);
-        setSessionResult("stop");
+    // Walk the batch against sessionPnlRef — which always holds the latest
+    // *committed* value — instead of the sessionPnl this effect's own
+    // closure captured. That closure value can be stale: if several
+    // settledQueue updates land before OrderPanel re-renders, or if a
+    // previous setSessionPnl from an earlier batch hasn't flushed yet,
+    // `sessionPnl` here would still be whatever it was when this effect
+    // function was created, not the true running total.
+    let runningPnl = sessionPnlRef.current;
+    let hitTarget = false;
+    let hitStop = false;
+
+    for (const settlement of unprocessed) {
+      runningPnl += settlement.profit;
+      if (tradeMode === "auto" && !hitTarget && !hitStop) {
+        // Target/stop are evaluated against THIS trade's own profit, not the
+        // accumulated session total — one trade, one result. sessionPnl below
+        // still accumulates across trades purely for the display ("Session
+        // P&L") and is reset by resetSession(); it no longer feeds the
+        // target/stop decision.
+        if (targetEnabled && settlement.profit >= targetProfit) hitTarget = true;
+        else if (stopEnabled && settlement.profit <= -stopLoss) hitStop = true;
       }
     }
+    runningPnl = +(runningPnl.toFixed(2));
 
-    // Release the loop now that this trade's outcome — and the resulting
-    // stopRequestedRef state — is fully settled and accounted for.
+    // Update the ref immediately (synchronously, before this effect returns)
+    // so a second settledQueue change arriving before the next render still
+    // sees the up-to-date baseline. setSessionPnl is also called so the UI
+    // re-renders with the new value — but the ref, not this call, is now the
+    // single source of truth the *logic* relies on.
+    sessionPnlRef.current = runningPnl;
+    setSessionPnl(runningPnl);
+
+    // Functional updates for the other two counters, for the same reason —
+    // always derive from React's latest state, never a closed-over variable.
+    setSessionTrades((prev) => prev + unprocessed.length);
+    setSessionWins((prev) => prev + unprocessed.filter((s) => s.profit > 0).length);
+    setLiveTrades((n) => Math.max(0, n - unprocessed.length));
+
+    if (hitTarget) {
+      autoRunningRef.current = false;
+      setAutoRunning(false);
+      setSessionResult("target");
+    } else if (hitStop) {
+      autoRunningRef.current = false;
+      setAutoRunning(false);
+      setSessionResult("stop");
+    }
+
+    // Wake up runSingleAutoTrade's await now that this trade's settlement —
+    // and the resulting target/stop result, if any — is fully accounted for.
     if (settlementWaiterRef.current) {
       const resolve = settlementWaiterRef.current;
       settlementWaiterRef.current = null;
       resolve();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lastSettledProfit]);
+  }, [settledQueue]);
 
-  // Resolves once the next settlement event fires (see effect above).
-  // The auto-loop calls this instead of a fixed setTimeout, so it can never
-  // place an extra trade before target/stop has been evaluated.
+  // Resolves once the placed trade's settlement event fires (see effect
+  // above). runSingleAutoTrade awaits this instead of a fixed setTimeout, so
+  // it reports the real settled result rather than guessing when it's ready.
   const waitForNextSettlement = useCallback((): Promise<void> => {
     return new Promise((resolve) => {
       settlementWaiterRef.current = resolve;
     });
   }, []);
 
-  // Auto-loop engine: fires a new trade every ~1.1 seconds while running
-  const runAutoLoop = useCallback(async (
+  // Auto-mode engine: places exactly ONE trade, waits for it to settle, then
+  // stops. Auto mode no longer means "keep trading until target/stop" — it
+  // means "place this one trade and tell me clearly whether it hit target,
+  // hit stop, or neither." There is intentionally no loop here: one click
+  // can never result in more than one trade being placed.
+  const runSingleAutoTrade = useCallback(async (
     direction: "up" | "down",
     meta: { digit?: number; contractType?: string; digitDirection?: string } | undefined,
     currentBalance: number,
     currentStake: number,
   ) => {
-    stopRequestedRef.current = false;
+    autoRunningRef.current = true;
     setAutoRunning(true);
     setLiveTrades(0);
 
-    while (!stopRequestedRef.current) {
-      // Check balance before each trade
-      if (currentStake > currentBalance) {
-        stopRequestedRef.current = true;
-        setAutoRunning(false);
-        break;
-      }
-
-      const ok = await onPlaceTrade(direction, meta);
-      if (!ok) {
-        // Failed to place (balance check failed server-side, auth issue, etc.)
-        stopRequestedRef.current = true;
-        setAutoRunning(false);
-        break;
-      }
-
-      setLiveTrades((n) => n + 1);
-      currentBalance -= currentStake;
-
-      // Wait for this exact trade to actually settle (price tick resolves it)
-      // before deciding whether to fire another — this is what makes target
-      // profit / stop loss strict instead of an approximate timer-based guess.
-      await waitForNextSettlement();
-
-      // stopRequestedRef may have just been flipped inside the settlement
-      // effect above (target/stop hit) — the while-loop condition catches
-      // this on its next check, so no further trade fires this round.
+    if (currentStake > currentBalance) {
+      autoRunningRef.current = false;
+      setAutoRunning(false);
+      return;
     }
 
+    const ok = await onPlaceTrade(direction, meta);
+    if (!ok) {
+      // Failed to place (balance check failed server-side, auth issue, etc.)
+      autoRunningRef.current = false;
+      setAutoRunning(false);
+      return;
+    }
+
+    setLiveTrades(1);
+
+    // Wait for this exact trade to settle (price tick resolves it) before
+    // reporting target/stop — the settlement effect above applies this
+    // trade's own profit/loss to sessionPnl and checks it there.
+    await waitForNextSettlement();
+
+    autoRunningRef.current = false;
     setAutoRunning(false);
     setLiveTrades(0);
   }, [onPlaceTrade, waitForNextSettlement]);
@@ -262,10 +310,11 @@ export function OrderPanel({
     };
 
     if (tradeMode === "auto") {
-      if (autoRunning) return; // already running
+      if (autoRunningRef.current) return; // already running — checked synchronously, can't race
+      autoRunningRef.current = true;
       setAutoDirection(direction);
       setAutoMeta(meta);
-      runAutoLoop(direction, meta, balance, stake);
+      runSingleAutoTrade(direction, meta, balance, stake);
     } else {
       // Manual: single trade
       onPlaceTrade(direction, meta);
@@ -273,7 +322,7 @@ export function OrderPanel({
   };
 
   const handleStop = () => {
-    stopRequestedRef.current = true;
+    autoRunningRef.current = false;
     setAutoRunning(false);
     setLiveTrades(0);
   };
@@ -283,7 +332,6 @@ export function OrderPanel({
     setSessionTrades(0);
     setSessionWins(0);
     setSessionResult(null);
-    stopRequestedRef.current = false;
   };
 
   const getLabels = (): [string, string] => {
@@ -342,7 +390,7 @@ export function OrderPanel({
           {(["auto", "manual"] as const).map((m) => (
             <button
               key={m}
-              onClick={() => { if (!autoRunning) setTradeMode(m); }}
+              onClick={() => { if (!autoRunningRef.current) setTradeMode(m); }}
               className={`flex-1 py-1.5 rounded-lg text-xs font-bold capitalize transition ${
                 tradeMode === m ? "bg-[#3B82F6] text-white shadow" : "text-gray-400 hover:text-gray-200"
               }`}
@@ -385,21 +433,9 @@ export function OrderPanel({
       {/* ── Risk controls (Auto mode only) ── */}
       {tradeMode === "auto" && (
         <div className="px-2.5 pt-1.5 pb-1.5 border-b border-white/[0.06]">
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-2 gap-1.5">
             <AdjustField label="Target profit" value={targetProfit} onChange={setTargetProfit} color="text-emerald-400" enabled={targetEnabled} onToggle={() => setTargetEnabled((v) => !v)} />
             <AdjustField label="Stop loss" value={stopLoss} onChange={setStopLoss} color="text-red-400" enabled={stopEnabled} onToggle={() => setStopEnabled((v) => !v)} />
-            <div className="bg-[#141822] rounded-xl p-1.5 border border-white/[0.06]">
-              <span className="text-[8px] text-amber-500/80 font-bold uppercase tracking-wide block mb-0.5">Multiplier</span>
-              <p className="text-amber-400 text-sm font-bold mb-1">×{multiplier}</p>
-              <div className="flex gap-1">
-                <button onClick={() => setMultiplierIdx((i) => Math.max(0, i - 1))} className="flex-1 h-6 rounded-lg bg-white/[0.07] hover:bg-white/[0.15] active:scale-95 flex items-center justify-center transition">
-                  <Minus className="w-3 h-3 text-gray-300" />
-                </button>
-                <button onClick={() => setMultiplierIdx((i) => Math.min(MULTIPLIER_OPTIONS.length - 1, i + 1))} className="flex-1 h-6 rounded-lg bg-white/[0.07] hover:bg-white/[0.15] active:scale-95 flex items-center justify-center transition">
-                  <Plus className="w-3 h-3 text-gray-300" />
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       )}

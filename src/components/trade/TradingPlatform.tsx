@@ -322,6 +322,15 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
     demoBalanceRef.current = demoBalance;
   }, [demoBalance]);
 
+  // Mirrors `positions` for synchronous reads inside placeTrade. placeTrade
+  // is called repeatedly across renders by the auto-loop in OrderPanel, so a
+  // closed-over `positions` value there could be stale by the time the call
+  // actually runs — this ref is always the latest committed state.
+  const positionsRef = useRef(positions);
+  useEffect(() => {
+    positionsRef.current = positions;
+  }, [positions]);
+
   useEffect(() => {
     if (!isAuthenticated) return;
     const timeout = setTimeout(() => {
@@ -412,6 +421,19 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
     setTradeError("");
     const isDemo = accountMode === "demo" || !isAuthenticated;
     const activeBalance = isDemo ? demoBalance : balance;
+
+    // Hard invariant: never more than one open position at a time. This is
+    // what makes target profit / stop loss strict — each trade settles fully
+    // (and is checked against the limits) before the next one can open, so
+    // the resolve-positions effect below can never close two trades in the
+    // same price tick and overshoot the stop/target by more than one trade.
+    const hasOpenPosition = positionsRef.current.some(
+      (p) => p.status === "open" && Boolean(p.isDemo) === isDemo
+    );
+    if (hasOpenPosition) {
+      setTradeError("Wait for the current trade to settle before placing another.");
+      return false;
+    }
 
     if (stake > activeBalance) {
       setTradeError("Insufficient balance");
