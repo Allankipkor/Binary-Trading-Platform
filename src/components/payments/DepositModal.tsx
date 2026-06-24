@@ -23,7 +23,7 @@ interface CryptoResult {
 
 export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositModalProps) {
   const [tab, setTab] = useState<Tab>("mpesa");
-  const [amount, setAmount] = useState(10);
+  const [amount, setAmount] = useState(5);
   const [phone, setPhone] = useState(userPhone ?? "");
   const [txHash, setTxHash] = useState("");
   const [loading, setLoading] = useState(false);
@@ -32,7 +32,7 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
   const [cryptoResult, setCryptoResult] = useState<CryptoResult | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const MIN_DEPOSIT = 10;
+  const MIN_DEPOSIT = 5;
 
   if (!open) return null;
 
