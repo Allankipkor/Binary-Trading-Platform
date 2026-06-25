@@ -29,7 +29,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     });
   }
 
-  // Still pending in our DB — ask GravityPay directly for the latest status.
+  // Still pending in our DB — ask Lipia Online directly for the latest status.
   // Only meaningful for M-Pesa transactions that have a checkoutRequestId saved.
   if (transaction.method === "mpesa" && transaction.metadata) {
     let meta: { checkoutRequestId?: string } = {};
@@ -43,10 +43,27 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       try {
         const result = await checkStkStatus(meta.checkoutRequestId);
 
-        if (result.success && result.data) {
-          const remoteStatus = result.data.status?.toLowerCase();
+        // Log the raw response so we can see exactly what Lipia sends for
+        // edge cases — this is what was missing last time something showed
+        // "success" on their dashboard but never resolved here.
+        console.log(`[withdraw-status-poll] checkoutRequestId=${meta.checkoutRequestId} raw=`, JSON.stringify(result));
 
-          if (remoteStatus === "success" || remoteStatus === "completed") {
+        // Lipia nests the actual payment fields under data.response (same
+        // shape as their webhook callback), not flat on data like GravityPay was.
+        const response = result.data?.response;
+
+        if (result.success && response) {
+          const remoteStatus = response.Status?.toLowerCase().trim();
+
+          const successValues = ["success", "successful", "completed", "complete", "paid", "confirmed"];
+          const failureValues = ["failed", "failure", "cancelled", "canceled", "rejected", "timeout", "expired"];
+
+          // ResultCode 0 is Lipia/Daraja's standard "processed successfully"
+          // code — checked alongside the Status string since either one
+          // alone could in principle be stale/inconsistent.
+          const succeeded = (remoteStatus && successValues.includes(remoteStatus)) || response.ResultCode === 0;
+
+          if (succeeded) {
             const existingMeta = transaction.metadata ? JSON.parse(transaction.metadata) : {};
 
             await prisma.$transaction([
@@ -56,8 +73,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
                   status: "completed",
                   metadata: JSON.stringify({
                     ...existingMeta,
-                    mpesaReceipt: result.data.mpesaReceipt,
+                    mpesaReceipt: response.MpesaReceiptNumber,
                     resolvedVia: "poll",
+                    rawStatus: remoteStatus,
                   }),
                 },
               }),
@@ -79,7 +97,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
             });
           }
 
-          if (remoteStatus === "failed" || remoteStatus === "cancelled") {
+          if (remoteStatus && failureValues.includes(remoteStatus)) {
             const existingMeta = transaction.metadata ? JSON.parse(transaction.metadata) : {};
             await prisma.transaction.update({
               where: { id: transaction.id },
@@ -87,19 +105,24 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
                 status: "failed",
                 metadata: JSON.stringify({
                   ...existingMeta,
-                  resultDesc: result.data.resultDesc,
+                  resultDesc: response.ResultDesc,
                   resolvedVia: "poll",
+                  rawStatus: remoteStatus,
                 }),
               },
             });
             return NextResponse.json({ status: "failed", amount: transaction.amount });
           }
+
+          // Unrecognized status string — log it loudly so we can add it to
+          // the lists above, but don't guess; just report pending.
+          console.warn(`[withdraw-status-poll] UNRECOGNIZED status "${remoteStatus}" for checkoutRequestId=${meta.checkoutRequestId}`);
+        } else {
+          console.log(`[withdraw-status-poll] success=false or no data for checkoutRequestId=${meta.checkoutRequestId}`, result);
         }
-        // result.success === false (e.g. "Transaction not found" because GravityPay
-        // hasn't finished processing yet) — treat as still pending, don't error out.
       } catch (err) {
         console.error("checkStkStatus error:", err);
-        // Network/API error talking to GravityPay — don't fail the poll request,
+        // Network/API error talking to Lipia — don't fail the poll request,
         // just report pending and let the client try again shortly.
       }
     }
