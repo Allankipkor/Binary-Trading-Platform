@@ -58,10 +58,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           const successValues = ["success", "successful", "completed", "complete", "paid", "confirmed"];
           const failureValues = ["failed", "failure", "cancelled", "canceled", "rejected", "timeout", "expired"];
 
-          // ResultCode 0 is Lipia/Daraja's standard "processed successfully"
-          // code — checked alongside the Status string since either one
-          // alone could in principle be stale/inconsistent.
-          const succeeded = (remoteStatus && successValues.includes(remoteStatus)) || response.ResultCode === 0;
+          // IMPORTANT: do NOT treat ResultCode === 0 alone as success. Daraja
+          // (which Lipia wraps) reuses ResultCode 0 for "STK push accepted
+          // for processing" on the *initiation* response, separately from
+          // "payment actually completed" on the *status/callback* response.
+          // Trusting ResultCode alone here previously caused balances to be
+          // credited the moment the prompt was sent to the phone, before the
+          // user had even entered their PIN. Only the explicit Status string
+          // is trusted now.
+          const succeeded = Boolean(remoteStatus && successValues.includes(remoteStatus));
 
           if (succeeded) {
             const existingMeta = transaction.metadata ? JSON.parse(transaction.metadata) : {};
