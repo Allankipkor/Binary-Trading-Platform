@@ -57,7 +57,7 @@ function AdjustField({
 
   const commit = () => {
     const n = parseFloat(raw);
-    if (!isNaN(n) && n >= 1) onChange(Math.round(n));
+    if (!isNaN(n) && n >= 1) onChange(Math.round(n * 100) / 100);
     setEditing(false);
   };
 
@@ -80,6 +80,7 @@ function AdjustField({
         <input
           autoFocus
           type="number"
+          step="0.01"
           value={raw}
           onChange={(e) => setRaw(e.target.value)}
           onBlur={commit}
