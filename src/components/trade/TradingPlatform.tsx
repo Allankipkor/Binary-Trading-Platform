@@ -146,17 +146,28 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
         fetch("/api/demo-balance"),
         fetch("/api/trades?status=open"),
       ]);
-      if (balRes.ok) {
-        const b = await balRes.json();
-        setBalance(b.balance ?? 0);
+
+      // Read all three responses BEFORE applying any state. Previously
+      // setBalance() ran as soon as balRes resolved, while the positions
+      // update (which is what actually flips a trade's visible status to
+      // won/lost) waited on a separate, independently-timed fetch+parse.
+      // Even though both numbers were always correct, the balance figure
+      // could paint to the screen a render or two before the won/lost label
+      // did — looking like money moved before the outcome was visible, even
+      // though the outcome had already been decided server-side by then.
+      // Reading everything first and applying state together (balance last,
+      // after positions) keeps the visible result and the balance change
+      // tied to the same moment from the user's perspective.
+      const balData = balRes.ok ? await balRes.json() : null;
+      const demoData = demoRes.ok ? await demoRes.json() : null;
+      const posData = posRes.ok ? await posRes.json() : null;
+
+      if (demoData && typeof demoData.demoBalance === "number") {
+        setDemoBalance(demoData.demoBalance);
       }
-      if (demoRes.ok) {
-        const d = await demoRes.json();
-        if (typeof d.demoBalance === "number") setDemoBalance(d.demoBalance);
-      }
-      if (posRes.ok) {
-        const p = await posRes.json();
-        const fetched = (p.trades ?? []).map(mapApiTrade);
+
+      if (posData) {
+        const fetched = (posData.trades ?? []).map(mapApiTrade);
 
         // Real-money trades are never settled locally (see the resolve
         // effect above) — the server's settleExpiredTrades is the only
@@ -189,6 +200,15 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
           }
           return fetched;
         });
+      }
+
+      // Applied last, and after a brief delay, so the won/lost label (from
+      // the positions update above) has reliably painted to the screen
+      // before the balance number changes — same-tick state updates usually
+      // batch into one React paint, but this guarantees the ordering the
+      // user actually sees rather than depending on batching behavior.
+      if (balData) {
+        setTimeout(() => setBalance(balData.balance ?? 0), 250);
       }
     } catch {
     } finally {
