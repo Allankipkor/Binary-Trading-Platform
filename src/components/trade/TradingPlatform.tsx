@@ -131,7 +131,15 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const mobileChartContainerRef = useRef<HTMLDivElement>(null);
 
+  // Guards against overlapping calls — the resolve-positions effect below
+  // calls syncFromApi() on every price tick (every ~800ms) while a
+  // real-money trade sits expired-but-unsettled waiting for the server, so
+  // without this a slow network could stack up many in-flight requests.
+  const syncInFlightRef = useRef(false);
+
   const syncFromApi = useCallback(async () => {
+    if (syncInFlightRef.current) return;
+    syncInFlightRef.current = true;
     try {
       const [balRes, demoRes, posRes] = await Promise.all([
         fetch("/api/balance"),
@@ -148,10 +156,45 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
       }
       if (posRes.ok) {
         const p = await posRes.json();
-        setPositions((p.trades ?? []).map(mapApiTrade));
+        const fetched = (p.trades ?? []).map(mapApiTrade);
+
+        // Real-money trades are never settled locally (see the resolve
+        // effect above) — the server's settleExpiredTrades is the only
+        // thing that decides won/lost for them. Detect here which real
+        // (non-demo) positions just transitioned from "open" to settled
+        // in this fetch, and push their server-confirmed profit into
+        // settledQueue, the same way the resolve effect does for demo
+        // trades. Without this, target/stop and the auto-loop's
+        // waitForNextSettlement() would never fire for real money, since
+        // nothing else populates settledQueue for non-demo trades.
+        setPositions((prevPositions) => {
+          const previouslyOpenIds = new Set(
+            prevPositions.filter((pos) => pos.status === "open" && !pos.isDemo).map((pos) => pos.id)
+          );
+          const newlySettled = fetched.filter(
+            (pos: Position) => previouslyOpenIds.has(pos.id) && pos.status !== "open"
+          );
+          if (newlySettled.length > 0) {
+            setSettledQueue((q) => [
+              ...q,
+              ...newlySettled.map((pos: Position) => ({ id: pos.id, profit: pos.profit ?? 0 })),
+            ]);
+            newlySettled.forEach((pos: Position) => {
+              pushToast({
+                kind: (pos.profit ?? 0) >= 0 ? "closed-profit" : "closed-loss",
+                asset: pos.asset,
+                amount: pos.profit ?? 0,
+              });
+            });
+          }
+          return fetched;
+        });
       }
-    } catch {}
-  }, []);
+    } catch {
+    } finally {
+      syncInFlightRef.current = false;
+    }
+  }, [pushToast]);
 
   useEffect(() => {
     const tickPrice = () => {
@@ -344,35 +387,46 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
   }, [demoBalance, isAuthenticated]);
 
   // Resolve positions
+  //
+  // IMPORTANT: for real-money (authenticated, non-demo) trades, this effect
+  // must NEVER decide won/lost or touch `balance` itself. It used to compute
+  // `won` from this client's own locally-ticking `price`/clock and apply the
+  // result to balance immediately — but the server's settleExpiredTrades()
+  // independently re-checks the SAME trade against its own price feed and
+  // clock, moments later, when syncFromApi() runs. Those two checks aren't
+  // guaranteed to agree right at the edge of a trade's expiry: by the time
+  // the server actually settles it, price may have ticked past openPrice in
+  // the other direction. When they disagreed, this client had already
+  // applied its own (sometimes wrong) guess straight to real balance,
+  // producing exactly the "loss added to balance instead of subtracting it"
+  // symptom — the optimistic guess was simply wrong, and visible, until the
+  // next sync silently corrected it back.
+  //
+  // Demo trades have no server authority to disagree with, so they keep
+  // resolving locally exactly as before.
   useEffect(() => {
     const now = Date.now();
     setPositions((prev) =>
       prev.map((p) => {
         if (p.status !== "open" || p.expiry > now) return p;
+
+        if (!p.isDemo) {
+          // Real money: don't guess. Leave it "open" — the countdown clamps
+          // to 0s and the position just waits — until syncFromApi() (called
+          // right below) brings back the server's authoritative result.
+          if (isAuthenticated) {
+            syncFromApi();
+          }
+          return p;
+        }
+
         const won = p.direction === "up" ? price > p.openPrice : price < p.openPrice;
         const profit = won ? p.payout - p.stake : -p.stake;
 
-        if (p.isDemo) {
-          // Demo: stake was already deducted at placement.
-          // On win, credit back the full payout (stake + profit).
-          // On loss, nothing more to deduct — stake already gone.
-          setDemoBalance((b) => +(b + (won ? p.payout : 0)).toFixed(2));
-        } else if (isAuthenticated) {
-          // Real money: let the server be the source of truth, but also
-          // optimistically reflect the result locally so the UI doesn't
-          // lag behind while the PATCH round-trip completes.
-          setBalance((b) => +(b + (won ? p.payout : 0)).toFixed(2));
-          fetch("/api/trades", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: p.id, status: won ? "won" : "lost", profit, closePrice: price }),
-          })
-            .then(() => syncFromApi())
-            .catch(() => {});
-        } else {
-          // Guest, non-demo fallback (shouldn't normally happen, but stay safe)
-          setBalance((b) => +(b + (won ? p.payout : 0)).toFixed(2));
-        }
+        // Demo: stake was already deducted at placement.
+        // On win, credit back the full payout (stake + profit).
+        // On loss, nothing more to deduct — stake already gone.
+        setDemoBalance((b) => +(b + (won ? p.payout : 0)).toFixed(2));
 
         setSettledQueue((q) => [...q, { id: p.id, profit }]);
         pushToast({
