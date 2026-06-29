@@ -322,7 +322,7 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
               {process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ? (
                 <PayPalProvider
                   clientId={process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}
-                  environment={process.env.NEXT_PUBLIC_PAYPAL_ENV === "live" ? "live" : "sandbox"}
+                  environment={process.env.NEXT_PUBLIC_PAYPAL_ENV === "live" ? "production" : "sandbox"}
                   components={["paypal-payments"]}
                   pageType="checkout"
                 >
