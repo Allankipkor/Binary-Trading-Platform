@@ -330,8 +330,16 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
                   <PayPalOneTimePaymentButton
                     createOrder={handlePaypalCreateOrder}
                     onApprove={handlePaypalApprove}
+                    presentationMode="modal"
                     onCancel={() => { setError(""); setMessage("Card payment cancelled"); }}
-                    onError={() => setError("Card payment error")}
+                    onError={(err) => {
+                      console.error("PayPal onError:", err);
+                      const detail =
+                        err && typeof err === "object" && "message" in err
+                          ? String((err as { message?: unknown }).message)
+                          : JSON.stringify(err);
+                      setError(`Card payment error: ${detail}`);
+                    }}
                   />
                 </PayPalProvider>
               ) : (
