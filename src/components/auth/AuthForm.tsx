@@ -108,7 +108,7 @@ try {
               {!isLogin && (
                 <div>
                   <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                    Phone (for M-Pesa)
+                    Phone Number
                   </label>
                   <input
                     type="tel"
