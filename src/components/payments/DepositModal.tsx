@@ -319,6 +319,7 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
 
           {tab === "card" && (
             <div>
+              <p className="text-xs font-semibold text-gray-300 mb-2">Pay with Debit or Credit Card</p>
               {process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ? (
                 <PayPalProvider
                   clientId={process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}
@@ -337,7 +338,7 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
                 <p className="text-xs text-rose-400">Card payments are not configured</p>
               )}
               <p className="text-[10px] text-gray-500 mt-2 text-center">
-                Pay with PayPal balance or a debit/credit card
+                Securely processed by PayPal
               </p>
             </div>
           )}
