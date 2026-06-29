@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { X, Smartphone, Bitcoin, CreditCard, Copy, Check } from "lucide-react";
 import {
-  PayPalProvider,
-  PayPalOneTimePaymentButton,
-} from "@paypal/react-paypal-js/sdk-v6";
+  PayPalScriptProvider,
+  PayPalButtons,
+} from "@paypal/react-paypal-js";
 
 type Tab = "mpesa" | "crypto" | "card";
 
@@ -163,7 +163,7 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handlePaypalCreateOrder = async () => {
+  const handlePaypalCreateOrder = async (): Promise<string> => {
     const res = await fetch("/api/payments/paypal/create-order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -173,21 +173,23 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
     if (!res.ok) throw new Error(data.error ?? "Could not start checkout");
     // Stash the transactionId on the orderId's own response so the capture
     // step below can find it again — simplest way to thread this through
-    // without extra component state, since PayPalOneTimePaymentButton's
-    // onApprove only gets handed back the orderId.
+    // without extra component state, since PayPalButtons' onApprove only
+    // gets handed back the orderID, not anything else we passed in here.
     paypalTransactionByOrderId[data.orderId] = data.transactionId;
-    return { orderId: data.orderId };
+    // The classic SDK's createOrder expects the bare order ID string to be
+    // returned directly — not wrapped in an object, unlike the v6 SDK.
+    return data.orderId;
   };
 
-  const handlePaypalApprove = async ({ orderId }: { orderId: string }) => {
+  const handlePaypalApprove = async (data: { orderID: string }) => {
     setLoading(true);
     setError("");
     try {
-      const transactionId = paypalTransactionByOrderId[orderId];
+      const transactionId = paypalTransactionByOrderId[data.orderID];
       const res = await fetch("/api/payments/paypal/capture-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transactionId, orderId }),
+        body: JSON.stringify({ transactionId, orderId: data.orderID }),
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error ?? "Capture failed");
@@ -319,29 +321,25 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
 
           {tab === "card" && (
             <div>
-              <p className="text-xs font-semibold text-gray-300 mb-2">Pay with Debit or Credit Card</p>
               {process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ? (
-                <PayPalProvider
-                  clientId={process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}
-                  environment={process.env.NEXT_PUBLIC_PAYPAL_ENV === "live" ? "production" : "sandbox"}
-                  components={["paypal-payments"]}
-                  pageType="checkout"
+                <PayPalScriptProvider
+                  options={{
+                    clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID,
+                    currency: "USD",
+                    intent: "capture",
+                  }}
                 >
-                  <PayPalOneTimePaymentButton
+                  <PayPalButtons
+                    style={{ layout: "vertical" }}
                     createOrder={handlePaypalCreateOrder}
                     onApprove={handlePaypalApprove}
-                    presentationMode="modal"
                     onCancel={() => { setError(""); setMessage("Card payment cancelled"); }}
                     onError={(err) => {
                       console.error("PayPal onError:", err);
-                      const detail =
-                        err && typeof err === "object" && "message" in err
-                          ? String((err as { message?: unknown }).message)
-                          : JSON.stringify(err);
-                      setError(`Card payment error: ${detail}`);
+                      setError(`Card payment error: ${err instanceof Error ? err.message : String(err)}`);
                     }}
                   />
-                </PayPalProvider>
+                </PayPalScriptProvider>
               ) : (
                 <p className="text-xs text-rose-400">Card payments are not configured</p>
               )}
