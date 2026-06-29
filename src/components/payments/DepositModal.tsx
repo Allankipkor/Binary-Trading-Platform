@@ -2,8 +2,19 @@
 
 import { useState } from "react";
 import { X, Smartphone, Bitcoin, CreditCard, Copy, Check } from "lucide-react";
+import {
+  PayPalProvider,
+  PayPalOneTimePaymentButton,
+} from "@paypal/react-paypal-js/sdk-v6";
 
 type Tab = "mpesa" | "crypto" | "card";
+
+// Maps a PayPal orderId -> our own transactionId, bridging createOrder and
+// onApprove (PayPalOneTimePaymentButton only hands the orderId back to
+// onApprove, not anything else we passed into createOrder). Module-level
+// rather than component state since it's short-lived internal plumbing,
+// not something that should trigger a re-render.
+const paypalTransactionByOrderId: Record<string, string> = {};
 
 interface DepositModalProps {
   open: boolean;
@@ -152,6 +163,43 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handlePaypalCreateOrder = async () => {
+    const res = await fetch("/api/payments/paypal/create-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? "Could not start checkout");
+    // Stash the transactionId on the orderId's own response so the capture
+    // step below can find it again — simplest way to thread this through
+    // without extra component state, since PayPalOneTimePaymentButton's
+    // onApprove only gets handed back the orderId.
+    paypalTransactionByOrderId[data.orderId] = data.transactionId;
+    return { orderId: data.orderId };
+  };
+
+  const handlePaypalApprove = async ({ orderId }: { orderId: string }) => {
+    setLoading(true);
+    setError("");
+    try {
+      const transactionId = paypalTransactionByOrderId[orderId];
+      const res = await fetch("/api/payments/paypal/capture-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transactionId, orderId }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error ?? "Capture failed");
+      onSuccess(result.balance);
+      setMessage(`Deposit of $${result.amount.toFixed(2)} confirmed!`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Card payment failed to complete");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const tabs: { id: Tab; label: string; icon: typeof Smartphone }[] = [
     { id: "mpesa", label: "M-Pesa", icon: Smartphone },
     { id: "crypto", label: "USDT", icon: Bitcoin },
@@ -269,10 +317,35 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
             </div>
           )}
 
+          {tab === "card" && (
+            <div>
+              {process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ? (
+                <PayPalProvider
+                  clientId={process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}
+                  environment={process.env.NEXT_PUBLIC_PAYPAL_ENV === "live" ? "live" : "sandbox"}
+                  components={["paypal-payments"]}
+                  pageType="checkout"
+                >
+                  <PayPalOneTimePaymentButton
+                    createOrder={handlePaypalCreateOrder}
+                    onApprove={handlePaypalApprove}
+                    onCancel={() => { setError(""); setMessage("Card payment cancelled"); }}
+                    onError={() => setError("Card payment error")}
+                  />
+                </PayPalProvider>
+              ) : (
+                <p className="text-xs text-rose-400">Card payments are not configured</p>
+              )}
+              <p className="text-[10px] text-gray-500 mt-2 text-center">
+                Pay with PayPal balance or a debit/credit card
+              </p>
+            </div>
+          )}
+
           {error && <p className="text-xs text-rose-400">{error}</p>}
           {message && <p className="text-xs text-emerald-400">{message}</p>}
 
-          {!cryptoResult && (
+          {!cryptoResult && tab !== "card" && (
             <button
               onClick={handleDeposit}
               disabled={loading || amount < MIN_DEPOSIT}

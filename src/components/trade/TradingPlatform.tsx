@@ -202,14 +202,15 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
         });
       }
 
-      // Applied last, and after a brief delay, so the won/lost label (from
-      // the positions update above) has reliably painted to the screen
-      // before the balance number changes — same-tick state updates usually
-      // batch into one React paint, but this guarantees the ordering the
-      // user actually sees rather than depending on batching behavior.
-      if (balData) {
-        setTimeout(() => setBalance(balData.balance ?? 0), 250);
-      }
+      // Applied last, in the same synchronous pass as the position update
+      // above (no setTimeout). An earlier version of this delayed the
+      // balance update by 250ms to fix a display-ordering issue — but that
+      // introduced a worse bug: if syncFromApi() runs again (e.g. for the
+      // next trade) before a pending delayed update fires, the OLDER,
+      // stale balance value could overwrite the newer correct one,
+      // showing the previous trade's balance instead of the current one.
+      // Applying synchronously avoids that entirely.
+      if (balData) setBalance(balData.balance ?? 0);
     } catch {
     } finally {
       syncInFlightRef.current = false;
