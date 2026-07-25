@@ -11,6 +11,15 @@ function formatPhone(phone: string): string {
   return digits;
 }
 
+function cleanEnvVar(val: string | undefined): string {
+  if (!val) return "";
+  let clean = val.trim();
+  if ((clean.startsWith('"') && clean.endsWith('"')) || (clean.startsWith("'") && clean.endsWith("'"))) {
+    clean = clean.slice(1, -1);
+  }
+  return clean.trim();
+}
+
 const PAYHERO_BASE_URL = process.env.PAYHERO_BASE_URL ?? "https://backend.payhero.co.ke/api/v2";
 
 /**
@@ -25,9 +34,9 @@ export async function initiateStkPush(params: {
   accountReference: string;
   transactionDesc: string;
 }) {
-  const username = process.env.PAYHERO_USERNAME;
-  const password = process.env.PAYHERO_PASSWORD;
-  const channelId = process.env.PAYHERO_CHANNEL_ID;
+  const username = cleanEnvVar(process.env.PAYHERO_USERNAME);
+  const password = cleanEnvVar(process.env.PAYHERO_PASSWORD);
+  const channelId = cleanEnvVar(process.env.PAYHERO_CHANNEL_ID);
 
   if (!username || !password || !channelId) {
     throw new Error("PayHero credentials not configured");
@@ -110,8 +119,8 @@ export interface PayHeroStatusResponse {
  * Per PayHero's docs: GET {PAYHERO_BASE_URL}/transaction-status
  */
 export async function checkStkStatus(checkoutRequestId: string): Promise<PayHeroStatusResponse> {
-  const username = process.env.PAYHERO_USERNAME;
-  const password = process.env.PAYHERO_PASSWORD;
+  const username = cleanEnvVar(process.env.PAYHERO_USERNAME);
+  const password = cleanEnvVar(process.env.PAYHERO_PASSWORD);
 
   if (!username || !password) {
     throw new Error("PayHero credentials not configured");
@@ -177,9 +186,8 @@ export function usdToKes(usd: number): number {
  * Check if PayHero M-Pesa is configured
  */
 export function isMpesaConfigured(): boolean {
-  return !!(
-    process.env.PAYHERO_USERNAME &&
-    process.env.PAYHERO_PASSWORD &&
-    process.env.PAYHERO_CHANNEL_ID
-  );
+  const username = cleanEnvVar(process.env.PAYHERO_USERNAME);
+  const password = cleanEnvVar(process.env.PAYHERO_PASSWORD);
+  const channelId = cleanEnvVar(process.env.PAYHERO_CHANNEL_ID);
+  return !!(username && password && channelId);
 }
