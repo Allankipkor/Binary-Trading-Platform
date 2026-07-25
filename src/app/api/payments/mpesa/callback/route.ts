@@ -8,6 +8,26 @@ function verifySignature(_req: Request, _rawBody: string): boolean {
   return true;
 }
 
+interface PayHeroCallbackBody {
+  Status?: string;
+  status?: string;
+  ResultCode?: number;
+  ExternalReference?: string;
+  external_reference?: string;
+  MerchantRequestID?: string;
+  CheckoutRequestID?: string;
+  checkoutRequestID?: string;
+  checkout_request_id?: string;
+  MpesaReceiptNumber?: string;
+  Reference?: string;
+  reference?: string;
+  transaction_code?: string;
+  ResultDesc?: string;
+  result_desc?: string;
+  message?: string;
+  response?: PayHeroCallbackBody;
+}
+
 export async function POST(req: Request) {
   const rawBody = await req.text();
 
@@ -16,7 +36,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
   }
 
-  let body: any;
+  let body: PayHeroCallbackBody;
   try {
     body = JSON.parse(rawBody);
   } catch {

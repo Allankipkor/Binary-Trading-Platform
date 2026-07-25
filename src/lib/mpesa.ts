@@ -62,7 +62,11 @@ export async function initiateStkPush(params: {
     );
   } catch (err) {
     if (axios.isAxiosError(err) && err.response?.data) {
-      const data = err.response.data as any;
+      const data = err.response.data as {
+        error_message?: string;
+        message?: string;
+        error?: string;
+      };
       const errMsg = data.error_message || data.message || data.error || "STK push failed";
       throw new Error(errMsg);
     }
@@ -85,12 +89,27 @@ export async function initiateStkPush(params: {
   };
 }
 
+export interface PayHeroStatusResponse {
+  success: boolean;
+  message?: string;
+  data: {
+    response: {
+      Status: string;
+      Amount: number;
+      ExternalReference: string;
+      MpesaReceiptNumber: string;
+      ResultDesc: string;
+      CheckoutRequestID: string;
+    };
+  };
+}
+
 /**
  * CHECK STK PUSH STATUS
  *
  * Per PayHero's docs: GET {PAYHERO_BASE_URL}/transaction-status
  */
-export async function checkStkStatus(checkoutRequestId: string): Promise<any> {
+export async function checkStkStatus(checkoutRequestId: string): Promise<PayHeroStatusResponse> {
   const username = process.env.PAYHERO_USERNAME;
   const password = process.env.PAYHERO_PASSWORD;
 
