@@ -53,11 +53,10 @@ DATABASE_URL="file:./dev.db"
 AUTH_SECRET="your-secret-here"
 NEXTAUTH_URL="http://localhost:3000"
 
-# M-Pesa Daraja API — https://developer.safaricom.co.ke
-MPESA_CONSUMER_KEY=
-MPESA_CONSUMER_SECRET=
-MPESA_SHORTCODE=174379
-MPESA_PASSKEY=
+# M-Pesa via PayHero — https://payhero.co.ke
+PAYHERO_USERNAME=
+PAYHERO_PASSWORD=
+PAYHERO_CHANNEL_ID=
 MPESA_CALLBACK_URL=http://localhost:3000/api/payments/mpesa/callback
 USD_TO_KES=130
 
@@ -68,9 +67,9 @@ CRYPTO_AUTO_CONFIRM=true   # auto-credit in dev
 
 ### M-Pesa Setup
 
-1. Register at [Safaricom Daraja](https://developer.safaricom.co.ke)
-2. Create an app and get Consumer Key/Secret
-3. For sandbox STK push, use shortcode `174379` and the sandbox passkey
+1. Register and get API credentials at [PayHero](https://payhero.co.ke)
+2. Obtain your API username, password, and register your payment channel (Till or Paybill) to get a Channel ID
+3. Set the environment variables in `.env`
 4. Expose your callback URL publicly (use ngrok for local dev)
 
 ### Crypto Setup
@@ -85,5 +84,5 @@ CRYPTO_AUTO_CONFIRM=true   # auto-credit in dev
 - NextAuth v5 (credentials)
 - Prisma + SQLite
 - Tailwind CSS 4
-- M-Pesa Daraja API
+- M-Pesa PayHero API
 - Zod validation

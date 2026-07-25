@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     if (method === "mpesa") {
       if (!isMpesaConfigured()) {
         return NextResponse.json(
-          { error: "M-Pesa not configured. Add LIPIA_API_KEY to .env" },
+          { error: "M-Pesa not configured. Add PAYHERO_USERNAME, PAYHERO_PASSWORD, and PAYHERO_CHANNEL_ID to .env" },
           { status: 503 }
         );
       }
