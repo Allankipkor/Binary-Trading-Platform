@@ -22,7 +22,7 @@ export default function ReferPage() {
     setReferralCode(hash.toString(36).toUpperCase().slice(0, 8).padEnd(8, "X"));
   }, [session]);
 
-  const referralLink = `https://shabikimarket.com/ref/${referralCode}`;
+  const referralLink = `https://smartdollarfx.com/ref/${referralCode}`;
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(referralLink);

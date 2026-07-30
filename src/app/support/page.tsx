@@ -77,7 +77,7 @@ export default function SupportPage() {
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full bg-[#141822] border border-white/[0.08] rounded-xl px-3.5 py-3 text-sm text-white outline-none focus:border-[#3B82F6]/50 appearance-none"
+                  className="w-full bg-[#141822] border border-white/[0.08] rounded-xl px-3.5 py-3 text-sm text-white outline-none focus:border-[#833ab4]/50 appearance-none"
                 >
                   <option value="">Select a category…</option>
                   {CATEGORIES.map((c) => (
@@ -94,7 +94,7 @@ export default function SupportPage() {
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
                   placeholder="Brief description of your issue"
-                  className="w-full bg-[#141822] border border-white/[0.08] rounded-xl px-3.5 py-3 text-sm text-white outline-none focus:border-[#3B82F6]/50"
+                  className="w-full bg-[#141822] border border-white/[0.08] rounded-xl px-3.5 py-3 text-sm text-white outline-none focus:border-[#833ab4]/50"
                 />
               </div>
 
@@ -107,7 +107,7 @@ export default function SupportPage() {
                   onChange={(e) => setMessage(e.target.value.slice(0, MAX_LEN))}
                   placeholder="Describe your issue in detail. Include any relevant transaction IDs or amounts."
                   rows={5}
-                  className="w-full bg-[#141822] border border-white/[0.08] rounded-xl px-3.5 py-3 text-sm text-white outline-none focus:border-[#3B82F6]/50 resize-none"
+                  className="w-full bg-[#141822] border border-white/[0.08] rounded-xl px-3.5 py-3 text-sm text-white outline-none focus:border-[#833ab4]/50 resize-none"
                 />
                 <p className="text-[10px] text-gray-600 text-right mt-1">{message.length}/{MAX_LEN}</p>
               </div>
@@ -120,7 +120,7 @@ export default function SupportPage() {
 
               <button
                 onClick={handleSubmit}
-                className="w-full h-12 rounded-xl bg-[#3B82F6] hover:bg-blue-500 text-white font-bold text-sm transition"
+                className="w-full h-12 rounded-xl bg-gradient-brand text-white font-bold text-sm transition"
               >
                 Submit Ticket
               </button>

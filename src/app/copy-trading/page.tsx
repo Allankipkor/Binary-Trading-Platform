@@ -92,7 +92,7 @@ export default function CopyTradingPage() {
                 value={copyKey}
                 onChange={(e) => setCopyKey(e.target.value.toUpperCase())}
                 placeholder="e.g. ABCD-EFGH-IJKL"
-                className="w-full bg-[#141822] border border-white/[0.08] rounded-xl pl-10 pr-3.5 py-3 text-sm text-white outline-none focus:border-[#3B82F6]/50 tracking-wider"
+                className="w-full bg-[#141822] border border-white/[0.08] rounded-xl pl-10 pr-3.5 py-3 text-sm text-white outline-none focus:border-[#833ab4]/50 tracking-wider"
               />
             </div>
           </div>
@@ -109,7 +109,7 @@ export default function CopyTradingPage() {
                   onClick={() => setStakeMode(m.id)}
                   className={`rounded-xl border p-2.5 text-left transition ${
                     stakeMode === m.id
-                      ? "border-[#3B82F6] bg-[#3B82F6]/10"
+                      ? "border-[#833ab4] bg-[#833ab4]/10"
                       : "border-white/[0.08] bg-[#141822]"
                   }`}
                 >
@@ -157,7 +157,7 @@ export default function CopyTradingPage() {
                   type="number"
                   value={fixedAmount}
                   onChange={(e) => setFixedAmount(Number(e.target.value))}
-                  className="w-full bg-[#141822] border border-white/[0.08] rounded-xl pl-8 pr-3.5 py-2.5 text-sm text-white outline-none focus:border-[#3B82F6]/50"
+                  className="w-full bg-[#141822] border border-white/[0.08] rounded-xl pl-8 pr-3.5 py-2.5 text-sm text-white outline-none focus:border-[#833ab4]/50"
                 />
               </div>
             </div>
@@ -172,7 +172,7 @@ export default function CopyTradingPage() {
 
           <button
             onClick={handleConnect}
-            className="w-full h-12 rounded-xl bg-[#3B82F6] hover:bg-blue-500 text-white font-bold text-sm transition flex items-center justify-center gap-2"
+            className="w-full h-12 rounded-xl bg-gradient-brand text-white font-bold text-sm transition flex items-center justify-center gap-2"
           >
             <Link2 className="w-4 h-4" />
             Connect

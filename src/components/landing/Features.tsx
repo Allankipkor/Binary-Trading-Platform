@@ -24,7 +24,7 @@ const FEATURES = [
     icon: Earth,
     title: "100+ Markets",
     desc: "Forex, crypto, stocks, indices, commodities — all in one place.",
-    color: "#3B82F6",
+    color: "#833ab4",
   },
   {
     icon: BadgeDollarSign,
@@ -51,7 +51,7 @@ export function Features() {
     <section id="features" className="border-y border-white/[0.07] bg-[#191c26]">
       <div className="max-w-6xl mx-auto px-4 sm:px-5 py-12 sm:py-16 md:py-24">
         <div className="text-center mb-14">
-          <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#3B82F6" }}>
+          <p className="text-xs font-bold uppercase tracking-widest mb-3 text-gradient-brand">
             Platform
           </p>
           <h2 className="text-3xl md:text-[2.75rem] font-bold text-white">

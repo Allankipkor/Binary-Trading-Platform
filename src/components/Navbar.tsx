@@ -42,8 +42,8 @@ export function Navbar() {
           </Link>
           <Link
             href="/register"
-            className="px-3 sm:px-4 py-1.5 sm:py-2 text-[12px] sm:text-[13px] font-semibold text-white rounded-lg transition shadow-lg shadow-[#3B82F6]/25 hover:shadow-[#3B82F6]/40 whitespace-nowrap"
-            style={{ background: "#3B82F6" }}
+            className="px-3 sm:px-4 py-1.5 sm:py-2 text-[12px] sm:text-[13px] font-semibold text-white rounded-lg transition whitespace-nowrap bg-gradient-brand"
+            style={{ boxShadow: "0 4px 14px rgba(131,58,180,.4)" }}
           >
             Get Started
           </Link>
@@ -80,7 +80,7 @@ export function Navbar() {
             <Link
               href="/trade?demo=true"
               onClick={() => setOpen(false)}
-              className="block px-3 py-3 text-sm font-medium rounded-lg text-[#3B82F6] hover:bg-white/5"
+              className="block px-3 py-3 text-sm font-medium rounded-lg text-gradient-brand hover:bg-white/5"
             >
               Try Demo
             </Link>

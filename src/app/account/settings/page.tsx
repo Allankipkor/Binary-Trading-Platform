@@ -88,7 +88,7 @@ export default function AccountSettingsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0a0c12] flex items-center justify-center">
-        <div className="w-8 h-8 border-[3px] border-[#3B82F6] border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-[3px] border-[#833ab4] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -105,7 +105,7 @@ export default function AccountSettingsPage() {
       <div className="max-w-md mx-auto px-4 py-6 space-y-6">
         {/* Avatar + email (read-only) */}
         <div className="flex items-center gap-3">
-          <div className="w-14 h-14 rounded-full bg-[#3B82F6] flex items-center justify-center text-xl font-bold shrink-0">
+          <div className="w-14 h-14 rounded-full bg-gradient-brand flex items-center justify-center text-xl font-bold shrink-0">
             {(profile?.name || profile?.email || "U")[0].toUpperCase()}
           </div>
           <div className="min-w-0">
@@ -126,7 +126,7 @@ export default function AccountSettingsPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Your name"
-              className="w-full bg-[#141822] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white outline-none focus:border-[#3B82F6]/50"
+              className="w-full bg-[#141822] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white outline-none focus:border-[#833ab4]/50"
             />
           </div>
           <div>
@@ -137,7 +137,7 @@ export default function AccountSettingsPage() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="07XX XXX XXX"
-              className="w-full bg-[#141822] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white outline-none focus:border-[#3B82F6]/50"
+              className="w-full bg-[#141822] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white outline-none focus:border-[#833ab4]/50"
             />
           </div>
 
@@ -151,7 +151,7 @@ export default function AccountSettingsPage() {
           <button
             onClick={handleSaveProfile}
             disabled={saving}
-            className="w-full h-11 rounded-xl bg-[#3B82F6] hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-bold transition"
+            className="w-full h-11 rounded-xl bg-gradient-brand disabled:opacity-50 text-white text-sm font-bold transition"
           >
             {saving ? "Saving…" : "Save changes"}
           </button>
@@ -176,14 +176,14 @@ export default function AccountSettingsPage() {
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 placeholder="Current password"
-                className="w-full bg-[#141822] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white outline-none focus:border-[#3B82F6]/50"
+                className="w-full bg-[#141822] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white outline-none focus:border-[#833ab4]/50"
               />
               <input
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="New password (min 8 characters)"
-                className="w-full bg-[#141822] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white outline-none focus:border-[#3B82F6]/50"
+                className="w-full bg-[#141822] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white outline-none focus:border-[#833ab4]/50"
               />
               {pwError && <p className="text-xs text-rose-400">{pwError}</p>}
               {pwSuccess && (
@@ -194,7 +194,7 @@ export default function AccountSettingsPage() {
               <button
                 onClick={handleChangePassword}
                 disabled={pwSaving || currentPassword.length === 0 || newPassword.length < 8}
-                className="w-full h-11 rounded-xl bg-[#3B82F6] hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-bold transition"
+                className="w-full h-11 rounded-xl bg-gradient-brand disabled:opacity-50 text-white text-sm font-bold transition"
               >
                 {pwSaving ? "Updating…" : "Update password"}
               </button>

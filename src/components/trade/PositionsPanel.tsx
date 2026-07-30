@@ -53,7 +53,7 @@ export function PositionsPanel({
           onClick={() => onTabChange("won")}
           className={`flex-1 py-2.5 sm:py-3 text-xs font-semibold transition min-h-[44px] ${
             showingOpen || closedTab === "won"
-              ? "text-white border-b-2 border-[#3B82F6]"
+              ? "text-white border-b-2 border-[#833ab4]"
               : "text-gray-500"
           }`}
         >
@@ -63,7 +63,7 @@ export function PositionsPanel({
           onClick={() => onTabChange("won")}
           className={`flex-1 py-2.5 sm:py-3 text-xs font-semibold transition min-h-[44px] ${
             !showingOpen && closedTab === "won"
-              ? "text-white border-b-2 border-[#3B82F6]"
+              ? "text-white border-b-2 border-[#833ab4]"
               : "text-gray-500"
           }`}
         >
@@ -73,7 +73,7 @@ export function PositionsPanel({
           onClick={() => onTabChange("lost")}
           className={`flex-1 py-2.5 sm:py-3 text-xs font-semibold transition min-h-[44px] ${
             !showingOpen && closedTab === "lost"
-              ? "text-white border-b-2 border-[#3B82F6]"
+              ? "text-white border-b-2 border-[#833ab4]"
               : "text-gray-500"
           }`}
         >

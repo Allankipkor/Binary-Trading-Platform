@@ -403,7 +403,7 @@ export function OrderPanel({
               key={m}
               onClick={() => { if (!autoRunningRef.current) setTradeMode(m); }}
               className={`flex-1 py-1.5 rounded-lg text-xs font-bold capitalize transition ${
-                tradeMode === m ? "bg-[#3B82F6] text-white shadow" : "text-gray-400 hover:text-gray-200"
+                tradeMode === m ? "bg-gradient-brand text-white shadow" : "text-gray-400 hover:text-gray-200"
               }`}
             >
               {m}
@@ -430,7 +430,7 @@ export function OrderPanel({
                 onChange={(e) => setRawStake(e.target.value)}
                 onBlur={commitStake}
                 onKeyDown={(e) => { if (e.key === "Enter") commitStake(); if (e.key === "Escape") setEditingStake(false); }}
-                className="w-20 bg-transparent text-white text-xl font-bold tabular-nums outline-none border-b-2 border-[#3B82F6] text-center"
+                className="w-20 bg-transparent text-white text-xl font-bold tabular-nums outline-none border-b-2 border-[#833ab4] text-center"
               />
             </div>
           ) : (
@@ -452,7 +452,7 @@ export function OrderPanel({
               key={s}
               onClick={() => onStakeChange(s)}
               className={`flex-1 py-1 rounded-lg text-[11px] font-bold border transition ${
-                stake === s ? "bg-[#1e3a5f] border-[#3B82F6] text-[#60a5fa]" : "border-white/[0.08] bg-white/[0.03] text-gray-400 hover:bg-white/[0.08]"
+                stake === s ? "bg-[#1e3a5f] border-[#833ab4] text-[#a855f7]" : "border-white/[0.08] bg-white/[0.03] text-gray-400 hover:bg-white/[0.08]"
               }`}
             >
               ${s}
@@ -496,7 +496,7 @@ export function OrderPanel({
               onClick={() => setSelectedDigit(d)}
               className={`flex-1 h-7 rounded-lg text-[12px] font-bold transition min-w-0 ${
                 d === selectedDigit
-                  ? "bg-[#3B82F6] text-white"
+                  ? "bg-gradient-brand text-white"
                   : "bg-[#141822] text-gray-400 border border-white/[0.07] hover:bg-white/[0.06]"
               }`}
             >
@@ -531,7 +531,7 @@ export function OrderPanel({
         {/* ── Payout info ── */}
         <div className="px-2.5 pt-1.5 pb-0.5 flex justify-between text-[11px] text-gray-500">
           <span>{selectedAsset.name.replace(" Index", "")}</span>
-          <span className="text-[#3B82F6] font-bold">{selectedAsset.payout}% payout</span>
+          <span className="text-[#a855f7] font-bold">{selectedAsset.payout}% payout</span>
         </div>
 
         {/* ── CTA buttons or STOP button ── */}

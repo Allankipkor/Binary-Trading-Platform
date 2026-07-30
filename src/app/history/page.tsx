@@ -60,7 +60,7 @@ export default function HistoryPage() {
               key={f}
               onClick={() => setFilter(f)}
               className={`flex-1 py-2 rounded-lg text-xs font-bold capitalize transition ${
-                filter === f ? "bg-[#3B82F6] text-white" : "text-gray-400"
+                filter === f ? "bg-gradient-brand text-white" : "text-gray-400"
               }`}
             >
               {f}
@@ -72,7 +72,7 @@ export default function HistoryPage() {
       <div className="max-w-md mx-auto px-4 py-2">
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="w-7 h-7 border-[3px] border-[#3B82F6] border-t-transparent rounded-full animate-spin" />
+            <div className="w-7 h-7 border-[3px] border-[#833ab4] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : items.length === 0 ? (
           <p className="text-center text-sm text-gray-500 py-12">No history yet</p>

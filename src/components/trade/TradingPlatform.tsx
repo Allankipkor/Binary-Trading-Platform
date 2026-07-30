@@ -600,7 +600,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
   if (sessionStatus === "loading") {
     return (
       <div className="min-h-[100dvh] bg-[#0a0c12] flex items-center justify-center">
-        <div className="w-10 h-10 border-[3px] border-[#3B82F6] border-t-transparent rounded-full animate-spin" />
+        <div className="w-10 h-10 border-[3px] border-[#833ab4] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -616,10 +616,10 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
             className="bg-[#0d0f17]/95 backdrop-blur-md border border-white/10 rounded-2xl px-4 py-3 shadow-2xl animate-[slideDown_0.25s_ease-out] flex items-start gap-3"
           >
             <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
-              t.kind === "executed" ? "bg-[#3B82F6]/15" : t.kind === "closed-profit" ? "bg-emerald-500/15" : "bg-rose-500/15"
+              t.kind === "executed" ? "bg-[#833ab4]/15" : t.kind === "closed-profit" ? "bg-emerald-500/15" : "bg-rose-500/15"
             }`}>
               {t.kind === "executed" ? (
-                <TrendingUp className="w-4 h-4 text-[#3B82F6]" />
+                <TrendingUp className="w-4 h-4 text-[#833ab4]" />
               ) : t.kind === "closed-profit" ? (
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
               ) : (
@@ -661,7 +661,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
               <Menu className="w-5 h-5" />
             </button>
             <span className="text-[13px] xs:text-sm sm:text-lg font-extrabold tracking-tight select-none whitespace-nowrap">
-              <span className="text-[#3B82F6]">SHABIKI</span><span className="text-white">MARKET</span>
+              <span className="text-gradient-brand">SMART</span><span className="text-white">DOLLARFX</span>
             </span>
           </div>
 
@@ -674,7 +674,9 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                 className="flex items-center gap-1.5 px-2 py-1.5 rounded-2xl bg-[#141822] border border-white/[0.07] hover:border-white/20 transition min-h-[40px] max-w-[110px] xs:max-w-[140px] sm:max-w-[200px]"
               >
                 {/* Flag - circular, smaller */}
-                <span className="w-6 h-6 rounded-full bg-[#1a1f35] border border-white/10 flex items-center justify-center text-xs leading-none shrink-0">🇺🇸</span>
+                <span className="w-6 h-6 rounded-full overflow-hidden shrink-0">
+                  <img src="https://img.icons8.com/color/48/usa-circular.png" alt="US" className="w-full h-full object-cover" />
+                </span>
                 <div className="text-left min-w-0">
                   <div className="text-[11px] sm:text-xs font-bold tabular-nums leading-tight truncate">
                     ${displayBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -702,14 +704,13 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                       <div className="text-left flex-1 min-w-0">
                         <div className="text-sm font-semibold text-white">Real Account</div>
                         <div className="flex items-center gap-1 text-xs text-gray-400">
-                          <span className="w-4 h-4 rounded-full bg-[#1a1f35] flex items-center justify-center text-[10px] leading-none">🇺🇸</span>
-                          <span className="tabular-nums">
-                            ${balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          <span className="w-4 h-4 rounded-full overflow-hidden shrink-0">
+                            <img src="https://img.icons8.com/color/48/usa-circular.png" alt="US" className="w-full h-full object-cover" />
                           </span>
                         </div>
                       </div>
                       {accountMode === "real" && (
-                        <div className="w-2 h-2 rounded-full bg-[#3B82F6] shrink-0" />
+                        <div className="w-2 h-2 rounded-full bg-gradient-brand shrink-0" />
                       )}
                     </button>
 
@@ -726,14 +727,16 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                       <div className="text-left flex-1 min-w-0">
                         <div className="text-sm font-semibold text-white">Demo Account</div>
                         <div className="flex items-center gap-1 text-xs text-gray-400">
-                          <span className="w-4 h-4 rounded-full bg-[#1a1f35] flex items-center justify-center text-[10px] leading-none">🇺🇸</span>
+                          <span className="w-4 h-4 rounded-full overflow-hidden shrink-0">
+                            <img src="https://img.icons8.com/color/48/usa-circular.png" alt="US" className="w-full h-full object-cover" />
+                          </span>
                           <span className="tabular-nums">
                             ${demoBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
                       </div>
                       {accountMode === "demo" && (
-                        <div className="w-2 h-2 rounded-full bg-[#3B82F6] shrink-0" />
+                        <div className="w-2 h-2 rounded-full bg-gradient-brand shrink-0" />
                       )}
                     </button>
 
@@ -758,7 +761,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
             {/* Deposit button */}
             <button
               onClick={() => setDepositOpen(true)}
-              className="px-2.5 xs:px-4 sm:px-5 py-2.5 text-[11px] xs:text-xs sm:text-sm font-bold rounded-xl text-white bg-[#3B82F6] hover:bg-blue-500 transition min-h-[40px] sm:min-h-[44px] shrink-0"
+              className="px-2.5 xs:px-4 sm:px-5 py-2.5 text-[11px] xs:text-xs sm:text-sm font-bold rounded-xl text-white bg-gradient-brand transition min-h-[40px] sm:min-h-[44px] shrink-0"
             >
               DEPOSIT
             </button>
@@ -793,7 +796,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                   onClick={() => { setNavMenuOpen(false); router.push("/account/settings"); }}
                   className="w-full flex items-center gap-3 px-4 py-4 border-b border-white/[0.07] hover:bg-white/[0.03] transition"
                 >
-                  <div className="w-12 h-12 rounded-full bg-[#3B82F6] flex items-center justify-center text-lg font-bold shrink-0">
+                  <div className="w-12 h-12 rounded-full bg-gradient-brand flex items-center justify-center text-lg font-bold shrink-0">
                     {(profile?.name || profile?.email || session?.user?.email || "U")[0]?.toUpperCase()}
                   </div>
                   <div className="text-left min-w-0">
@@ -810,7 +813,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                   <Link
                     href="/login"
                     onClick={() => setNavMenuOpen(false)}
-                    className="w-full flex items-center justify-center h-11 rounded-xl bg-[#3B82F6] hover:bg-blue-500 text-white text-sm font-bold transition"
+                    className="w-full flex items-center justify-center h-11 rounded-xl bg-gradient-brand text-white text-sm font-bold transition"
                   >
                     Sign In
                   </Link>
@@ -890,7 +893,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                     <Moon className="w-5 h-5 text-gray-400" />
                     Dark theme
                   </span>
-                  <div className="w-11 h-6 rounded-full bg-[#3B82F6] relative cursor-not-allowed opacity-80" title="Always on">
+                  <div className="w-11 h-6 rounded-full bg-gradient-brand relative cursor-not-allowed opacity-80" title="Always on">
                     <span className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-white" />
                   </div>
                 </div>
@@ -971,7 +974,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                   key={t}
                   onClick={() => setContractType(mapped as ContractType)}
                   className={`flex-1 min-w-[90px] px-3 xl:px-6 py-3 text-[11px] xl:text-sm font-semibold border-b-2 transition whitespace-nowrap ${
-                    isActive ? "border-[#3B82F6] text-white" : "border-transparent text-gray-500 hover:text-gray-400"
+                    isActive ? "border-[#833ab4] text-white" : "border-transparent text-gray-500 hover:text-gray-400"
                   }`}
                 >
                   {t}
@@ -991,8 +994,8 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                 onClick={() => setAssetDropdown((v) => !v)}
                 className="flex items-center gap-2 bg-black/30 backdrop-blur-sm rounded-xl px-3 py-2 hover:bg-black/40 transition"
               >
-                <div className="w-7 h-7 rounded-lg bg-[#3B82F6]/15 border border-[#3B82F6]/25 flex items-center justify-center shrink-0">
-                  <BarChart3 className="w-3.5 h-3.5 text-[#3B82F6]" />
+                <div className="w-7 h-7 rounded-lg bg-[#833ab4]/15 border border-[#833ab4]/25 flex items-center justify-center shrink-0">
+                  <BarChart3 className="w-3.5 h-3.5 text-[#833ab4]" />
                 </div>
                 <div className="text-left min-w-0">
                   <div className="text-sm font-bold text-white truncate">{selectedAsset.name}</div>
@@ -1012,7 +1015,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                         key={a.id}
                         onClick={() => { setSelectedAsset(a); setAssetDropdown(false); }}
                         className={`w-full px-4 py-3 text-left text-xs hover:bg-white/5 transition min-h-[44px] ${
-                          a.id === selectedAsset.id ? "text-[#3B82F6]" : "text-gray-400"
+                          a.id === selectedAsset.id ? "text-[#833ab4]" : "text-gray-400"
                         }`}
                       >
                         <div className="font-semibold">{a.name}</div>
@@ -1039,7 +1042,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                   <div
                     key={offset}
                     className={`text-[10px] xl:text-[11px] tabular-nums font-semibold px-1.5 xl:px-2 py-0.5 rounded ${
-                      isCurrent ? "bg-[#3B82F6] text-white" : "text-gray-400"
+                      isCurrent ? "bg-gradient-brand text-white" : "text-gray-400"
                     }`}
                   >
                     {val}
@@ -1088,7 +1091,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                       key={t}
                       onClick={() => setContractType(mapped as ContractType)}
                       className={`flex-1 min-w-[76px] py-2.5 text-[10px] xs:text-[11px] sm:text-xs font-semibold border-b-2 transition whitespace-nowrap snap-start min-h-[44px] ${
-                        isActive ? "border-[#3B82F6] text-white" : "border-transparent text-gray-500"
+                        isActive ? "border-[#833ab4] text-white" : "border-transparent text-gray-500"
                       }`}
                     >
                       {t}
@@ -1108,8 +1111,8 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                       onClick={() => setAssetDropdown((v) => !v)}
                       className="flex items-center gap-2 bg-black/30 backdrop-blur-sm rounded-xl px-2.5 py-1.5 max-w-[78%]"
                     >
-                      <div className="w-6 h-6 rounded-lg bg-[#3B82F6]/15 border border-[#3B82F6]/25 flex items-center justify-center shrink-0">
-                        <BarChart3 className="w-3 h-3 text-[#3B82F6]" />
+                      <div className="w-6 h-6 rounded-lg bg-[#833ab4]/15 border border-[#833ab4]/25 flex items-center justify-center shrink-0">
+                        <BarChart3 className="w-3 h-3 text-[#833ab4]" />
                       </div>
                       <div className="text-left min-w-0">
                         <div className="text-[11px] sm:text-xs font-bold text-white truncate leading-tight">
@@ -1131,7 +1134,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                               key={a.id}
                               onClick={() => { setSelectedAsset(a); setAssetDropdown(false); }}
                               className={`w-full px-4 py-3 text-left text-xs hover:bg-white/5 transition min-h-[44px] ${
-                                a.id === selectedAsset.id ? "text-[#3B82F6]" : "text-gray-400"
+                                a.id === selectedAsset.id ? "text-[#833ab4]" : "text-gray-400"
                               }`}
                             >
                               <div className="font-semibold">{a.name}</div>
@@ -1160,7 +1163,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                         <div
                           key={offset}
                           className={`text-[10px] sm:text-[11px] tabular-nums font-semibold px-1.5 py-0.5 rounded ${
-                            isCurrent ? "bg-[#3B82F6] text-white" : "text-gray-400"
+                            isCurrent ? "bg-gradient-brand text-white" : "text-gray-400"
                           }`}
                         >
                           {val}
@@ -1196,8 +1199,8 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
 
         {mobileTab === "ai" && (
           <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-[#0d0f17] px-6 text-center" style={{ paddingBottom: "calc(72px + env(safe-area-inset-bottom, 0px))" }}>
-            <div className="w-16 h-16 rounded-full bg-[#3B82F6]/10 border border-[#3B82F6]/20 flex items-center justify-center">
-              <Sparkles className="w-8 h-8 text-[#3B82F6]" />
+            <div className="w-16 h-16 rounded-full bg-[#833ab4]/10 border border-[#833ab4]/20 flex items-center justify-center">
+              <Sparkles className="w-8 h-8 text-[#833ab4]" />
             </div>
             <div>
               <p className="text-white font-semibold text-base mb-1">AI</p>
@@ -1207,7 +1210,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
             </div>
             <button
               onClick={() => setScannerOpen(true)}
-              className="px-5 py-2.5 rounded-xl bg-[#3B82F6] text-white text-sm font-semibold min-h-[44px]"
+              className="px-5 py-2.5 rounded-xl bg-gradient-brand text-white text-sm font-semibold min-h-[44px]"
             >
               AI
             </button>
@@ -1222,7 +1225,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
           <button
             onClick={() => setMobileTab("trade")}
             className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 sm:py-3 min-h-[56px] transition ${
-              mobileTab === "trade" ? "text-[#3B82F6]" : "text-gray-500"
+              mobileTab === "trade" ? "text-gradient-brand" : "text-gray-500"
             }`}
           >
             <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -1233,24 +1236,24 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
             className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] transition"
           >
             <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition ${
-              mobileTab === "ai" ? "bg-[#3B82F6]" : "bg-[#141822]"
+              mobileTab === "ai" ? "bg-gradient-brand" : "bg-[#141822]"
             }`}>
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className={`text-[10px] sm:text-xs font-semibold ${mobileTab === "ai" ? "text-[#3B82F6]" : "text-gray-500"}`}>
+            <span className={`text-[10px] sm:text-xs font-semibold ${mobileTab === "ai" ? "text-gradient-brand" : "text-gray-500"}`}>
               AI
             </span>
           </button>
           <button
             onClick={() => setMobileTab("positions")}
             className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 sm:py-3 min-h-[56px] transition relative ${
-              mobileTab === "positions" ? "text-[#3B82F6]" : "text-gray-500"
+              mobileTab === "positions" ? "text-gradient-brand" : "text-gray-500"
             }`}
           >
             <LayoutList className="w-5 h-5 sm:w-6 sm:h-6" />
             <span className="text-[10px] sm:text-xs font-semibold">Positions</span>
             {openCount > 0 && (
-              <span className="absolute top-1.5 right-[22%] min-w-[16px] h-4 px-1 rounded-full bg-[#3B82F6] text-white text-[9px] font-bold flex items-center justify-center">
+              <span className="absolute top-1.5 right-[22%] min-w-[16px] h-4 px-1 rounded-full bg-gradient-brand text-white text-[9px] font-bold flex items-center justify-center">
                 {openCount}
               </span>
             )}
@@ -1299,7 +1302,7 @@ function LiveDigitTracker({ price, priceHistory }: { price: number; priceHistory
           className="absolute -top-0.5 flex flex-col items-center transition-all duration-300 ease-out"
           style={{ left: `calc(${(currentDigit / 9) * 100}% - 5px)` }}
         >
-          <div className="w-0 h-0 border-l-[5px] border-r-[5px] border-b-[6px] border-l-transparent border-r-transparent border-b-[#3B82F6]" />
+          <div className="w-0 h-0 border-l-[5px] border-r-[5px] border-b-[6px] border-l-transparent border-r-transparent border-b-[#833ab4]" />
         </div>
 
         <div className="flex justify-between gap-1 pt-2.5">
@@ -1311,7 +1314,7 @@ function LiveDigitTracker({ price, priceHistory }: { price: number; priceHistory
                 <div
                   className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-bold border-2 transition-all ${
                     isCurrent
-                      ? "bg-[#3B82F6] border-[#3B82F6] text-white scale-110 shadow-[0_0_12px_rgba(59,130,246,0.5)]"
+                      ? "bg-gradient-brand border-[#833ab4] text-white scale-110 shadow-[0_0_12px_rgba(131,58,180,0.5)]"
                       : isHot
                         ? "bg-transparent border-emerald-500 text-emerald-400"
                         : "bg-transparent border-white/15 text-gray-400"
@@ -1458,8 +1461,8 @@ function EntryScannerModal({
       <div className="w-full max-w-sm bg-[#0d0f17] border border-white/10 rounded-3xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07] sticky top-0 bg-[#0d0f17] z-10">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#3B82F6]/15 border border-[#3B82F6]/25 flex items-center justify-center">
-              <Sparkles className="w-4.5 h-4.5 text-[#3B82F6]" />
+            <div className="w-9 h-9 rounded-xl bg-[#833ab4]/15 border border-[#833ab4]/25 flex items-center justify-center">
+              <Sparkles className="w-4.5 h-4.5 text-[#833ab4]" />
             </div>
             <h2 className="text-base font-bold text-white">AI Scanner</h2>
           </div>
@@ -1479,7 +1482,7 @@ function EntryScannerModal({
               value={selectedMarket}
               onChange={(e) => { setSelectedMarket(e.target.value as ScanMarket); setResult(null); }}
               disabled={scanning}
-              className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3.5 py-3 text-sm text-white outline-none focus:border-[#3B82F6]/50 appearance-none disabled:opacity-50"
+              className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3.5 py-3 text-sm text-white outline-none focus:border-[#833ab4]/50 appearance-none disabled:opacity-50"
             >
               <option value="Even/Odd">Even / Odd</option>
               <option value="Over/Under">Over / Under</option>
@@ -1496,7 +1499,7 @@ function EntryScannerModal({
             </div>
             <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
               <div
-                className={`h-full transition-all duration-500 ${result ? "bg-emerald-500" : "bg-[#3B82F6]"}`}
+                className={`h-full transition-all duration-500 ${result ? "bg-emerald-500" : "bg-[#833ab4]"}`}
                 style={{ width: `${(pass / TOTAL_PASSES) * 100}%` }}
               />
             </div>
@@ -1542,7 +1545,7 @@ function EntryScannerModal({
           <button
             onClick={handleScan}
             disabled={scanning}
-            className="w-full h-12 rounded-xl bg-[#3B82F6] hover:bg-blue-500 disabled:opacity-60 text-white text-sm font-bold flex items-center justify-center gap-2 transition"
+            className="w-full h-12 rounded-xl bg-gradient-brand disabled:opacity-60 text-white text-sm font-bold flex items-center justify-center gap-2 transition"
           >
             {scanning ? (
               <>

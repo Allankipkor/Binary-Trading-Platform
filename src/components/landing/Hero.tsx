@@ -23,23 +23,22 @@ export function Hero() {
         <div
           className="absolute top-[-200px] left-1/2 -translate-x-1/2 w-[700px] h-[700px] rounded-full"
           style={{
-            background: "radial-gradient(circle, rgba(59,130,246,.12) 0%, transparent 70%)",
+            background: "radial-gradient(circle, rgba(131,58,180,.12) 0%, transparent 70%)",
           }}
         />
         <div
           className="absolute top-[100px] right-[-100px] w-[400px] h-[400px] rounded-full"
           style={{
-            background: "radial-gradient(circle, rgba(0,212,170,.08) 0%, transparent 70%)",
+            background: "radial-gradient(circle, rgba(217,0,0,.08) 0%, transparent 70%)",
           }}
         />
       </div>
       <div className="relative max-w-6xl mx-auto px-4 sm:px-5 pt-12 sm:pt-16 md:pt-28 pb-10 sm:pb-12 md:pb-20 text-center">
         <div
-          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold mb-7 border"
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold mb-7 border text-gradient-brand"
           style={{
-            color: "#3B82F6",
-            borderColor: "rgba(59,130,246,.25)",
-            background: "rgba(59,130,246,.08)",
+            borderColor: "rgba(131,58,180,.25)",
+            background: "rgba(131,58,180,.08)",
           }}
         >
           <Flame className="w-3.5 h-3.5" />
@@ -49,7 +48,7 @@ export function Hero() {
           Trading Made Easy,{" "}
           <span
             className="bg-clip-text text-transparent"
-            style={{ backgroundImage: "linear-gradient(135deg, #3B82F6, #00d4aa)" }}
+            style={{ backgroundImage: "var(--gradient-brand)" }}
           >
             Trade Smart
           </span>
@@ -61,8 +60,8 @@ export function Hero() {
         <div className="flex flex-col sm:flex-row gap-3 justify-center mb-12">
           <Link
             href="/register"
-            className="group inline-flex items-center justify-center gap-2 px-7 py-3.5 text-white font-semibold rounded-xl transition-all shadow-xl shadow-[#3B82F6]/25 hover:shadow-[#3B82F6]/40 text-[15px]"
-            style={{ background: "#3B82F6" }}
+            className="group inline-flex items-center justify-center gap-2 px-7 py-3.5 text-white font-semibold rounded-xl transition-all shadow-xl text-[15px] bg-gradient-brand"
+            style={{ boxShadow: "0 4px 14px rgba(131,58,180,.4)" }}
           >
             Get Started — It&apos;s Free
             <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
@@ -81,7 +80,7 @@ export function Hero() {
               key={label}
               className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-medium bg-white/[0.04] text-gray-300 border border-white/[0.06]"
             >
-              <Icon className="w-3.5 h-3.5" style={{ color: "#3B82F6" }} />
+              <Icon className="w-3.5 h-3.5" style={{ color: "#833ab4" }} />
               {label}
             </div>
           ))}

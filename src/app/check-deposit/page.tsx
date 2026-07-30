@@ -50,13 +50,13 @@ export default function CheckDepositPage() {
             value={transactionId}
             onChange={(e) => setTransactionId(e.target.value)}
             placeholder="Transaction ID (from your history)"
-            className="w-full bg-[#141822] border border-white/[0.08] rounded-xl px-3.5 py-3 text-sm text-white outline-none focus:border-[#3B82F6]/50"
+            className="w-full bg-[#141822] border border-white/[0.08] rounded-xl px-3.5 py-3 text-sm text-white outline-none focus:border-[#833ab4]/50"
           />
           {error && <p className="text-xs text-rose-400">{error}</p>}
           <button
             onClick={handleCheck}
             disabled={checking}
-            className="w-full h-11 rounded-xl bg-[#3B82F6] hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-bold flex items-center justify-center gap-2 transition"
+            className="w-full h-11 rounded-xl bg-gradient-brand disabled:opacity-50 text-white text-sm font-bold flex items-center justify-center gap-2 transition"
           >
             <RefreshCw className={`w-4 h-4 ${checking ? "animate-spin" : ""}`} />
             {checking ? "Checking…" : "Check status"}

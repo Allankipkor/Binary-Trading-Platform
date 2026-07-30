@@ -50,8 +50,8 @@ export default function ResponsibleTradingPage() {
 
         {sections.map(({ icon: Icon, title, body }) => (
           <div key={title} className="bg-[#0d0f17] border border-white/[0.07] rounded-2xl p-4 flex gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#3B82F6]/10 border border-[#3B82F6]/20 flex items-center justify-center shrink-0">
-              <Icon className="w-4.5 h-4.5 text-[#3B82F6]" />
+            <div className="w-9 h-9 rounded-xl bg-[#833ab4]/10 border border-[#833ab4]/20 flex items-center justify-center shrink-0">
+              <Icon className="w-4.5 h-4.5 text-[#833ab4]" />
             </div>
             <div>
               <p className="text-sm font-bold text-white mb-1">{title}</p>

@@ -3,7 +3,7 @@ import { Star } from "lucide-react";
 const REVIEWS = [
   {
     quote:
-      "Switched from three other platforms. OpenMarket is the fastest and most reliable by far.",
+      "Switched from three other platforms. SmartDollarFX is the fastest and most reliable by far.",
     name: "Alex M.",
     country: "USA",
     initials: "AM",
@@ -44,7 +44,7 @@ export function Reviews() {
   return (
     <section id="reviews" className="max-w-6xl mx-auto px-4 sm:px-5 py-12 sm:py-16 md:py-24">
       <div className="text-center mb-14">
-        <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#3B82F6" }}>
+        <p className="text-xs font-bold uppercase tracking-widest mb-3 text-gradient-brand">
           Wall of love
         </p>
         <h2 className="text-3xl md:text-[2.75rem] font-bold text-white">What traders say</h2>
@@ -64,7 +64,7 @@ export function Reviews() {
             <div className="flex items-center gap-2.5">
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold"
-                style={{ background: "linear-gradient(135deg, #3B82F6, #00d4aa)" }}
+                style={{ background: "var(--gradient-brand)" }}
               >
                 {initials}
               </div>

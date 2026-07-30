@@ -6,12 +6,12 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "OpenMarket - Binary Trading Platform",
+  title: "SmartDollarFX - Binary Trading Platform",
   description: "Trade binary options on synthetic indices",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#3B82F6",
+  themeColor: "#833ab4",
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,

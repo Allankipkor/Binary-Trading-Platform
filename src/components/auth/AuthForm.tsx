@@ -78,7 +78,7 @@ try {
             </h1>
             <p className="text-sm text-gray-400 mb-8">
               {isLogin
-                ? "Log in to continue trading on OpenMarket"
+                ? "Log in to continue trading on SmartDollarFX"
                 : "Join over 1 million traders worldwide"}
             </p>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -90,7 +90,7 @@ try {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Your name"
-                    className="w-full px-4 py-3 rounded-xl bg-[#13161e] border border-white/[0.07] text-white text-sm placeholder:text-gray-600 focus:outline-none focus:border-[#3B82F6]/50 focus:ring-1 focus:ring-[#3B82F6]/30 transition"
+                    className="w-full px-4 py-3 rounded-xl bg-[#13161e] border border-white/[0.07] text-white text-sm placeholder:text-gray-600 focus:outline-none focus:border-[#833ab4]/50 focus:ring-1 focus:ring-[#833ab4]/30 transition"
                   />
                 </div>
               )}
@@ -102,7 +102,7 @@ try {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="w-full px-4 py-3 rounded-xl bg-[#13161e] border border-white/[0.07] text-white text-sm placeholder:text-gray-600 focus:outline-none focus:border-[#3B82F6]/50 focus:ring-1 focus:ring-[#3B82F6]/30 transition"
+                  className="w-full px-4 py-3 rounded-xl bg-[#13161e] border border-white/[0.07] text-white text-sm placeholder:text-gray-600 focus:outline-none focus:border-[#833ab4]/50 focus:ring-1 focus:ring-[#833ab4]/30 transition"
                 />
               </div>
               {!isLogin && (
@@ -115,7 +115,7 @@ try {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+XX XXX XXX"
-                    className="w-full px-4 py-3 rounded-xl bg-[#13161e] border border-white/[0.07] text-white text-sm placeholder:text-gray-600 focus:outline-none focus:border-[#3B82F6]/50 focus:ring-1 focus:ring-[#3B82F6]/30 transition"
+                    className="w-full px-4 py-3 rounded-xl bg-[#13161e] border border-white/[0.07] text-white text-sm placeholder:text-gray-600 focus:outline-none focus:border-[#833ab4]/50 focus:ring-1 focus:ring-[#833ab4]/30 transition"
                   />
                 </div>
               )}
@@ -129,7 +129,7 @@ try {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full px-4 py-3 rounded-xl bg-[#13161e] border border-white/[0.07] text-white text-sm placeholder:text-gray-600 focus:outline-none focus:border-[#3B82F6]/50 focus:ring-1 focus:ring-[#3B82F6]/30 transition pr-11"
+                    className="w-full px-4 py-3 rounded-xl bg-[#13161e] border border-white/[0.07] text-white text-sm placeholder:text-gray-600 focus:outline-none focus:border-[#833ab4]/50 focus:ring-1 focus:ring-[#833ab4]/30 transition pr-11"
                   />
                   <button
                     type="button"
@@ -149,8 +149,8 @@ try {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 rounded-xl text-white font-semibold text-sm transition-all disabled:opacity-60"
-                style={{ background: "#3B82F6", boxShadow: "0 4px 16px #3B82F633" }}
+                className="w-full py-3 rounded-xl text-white font-semibold text-sm transition-all disabled:opacity-60 bg-gradient-brand"
+                style={{ boxShadow: "0 4px 14px rgba(131,58,180,.4)" }}
               >
                 {loading ? (
                   <span className="inline-flex items-center gap-2">
@@ -168,7 +168,7 @@ try {
               {isLogin ? "Don't have an account? " : "Already have an account? "}
               <Link
                 href={isLogin ? "/register" : "/login"}
-                className="text-[#3B82F6] font-medium hover:underline"
+                className="text-gradient-brand font-medium hover:underline"
               >
                 {isLogin ? "Sign up" : "Log in"}
               </Link>

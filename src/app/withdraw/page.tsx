@@ -31,9 +31,17 @@ export default function WithdrawPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState<WithdrawSuccess | null>(null);
+  const [kesRate, setKesRate] = useState<number | null>(null);
 
   const MIN = 100;
   const MAX = 150000;
+
+  useEffect(() => {
+    fetch("/api/payments/rate")
+      .then((r) => r.json())
+      .then((d) => setKesRate(d.usdToKes))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch("/api/payments/withdraw")
@@ -198,6 +206,11 @@ export default function WithdrawPage() {
               <span>Min: ${MIN.toFixed(2)}</span>
               <span>Max: ${MAX.toFixed(2)}</span>
             </div>
+            {kesRate && amount && (
+              <p className="text-[11px] text-gray-500 mt-1.5 text-right tabular-nums">
+                ≈ KES {(parseFloat(amount || "0") * kesRate).toLocaleString("en-US")}
+              </p>
+            )}
           </div>
 
           {error && (
@@ -251,8 +264,8 @@ export default function WithdrawPage() {
             <div className="px-5 py-5 space-y-3">
               {success.method === "mpesa" && success.phone && (
                 <div className="flex items-center gap-3 bg-white/[0.03] rounded-xl px-4 py-3.5">
-                  <div className="w-9 h-9 rounded-full bg-[#3B82F6]/15 flex items-center justify-center shrink-0">
-                    <Smartphone className="w-4 h-4 text-[#3B82F6]" />
+                  <div className="w-9 h-9 rounded-full bg-[#833ab4]/15 flex items-center justify-center shrink-0">
+                    <Smartphone className="w-4 h-4 text-[#833ab4]" />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">M-Pesa Phone Number</p>

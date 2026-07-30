@@ -27,7 +27,7 @@ export function LiveChartPreview() {
       <div className="w-full relative">
         <div
           className="hidden md:block absolute -inset-6 rounded-[2rem] blur-[50px] opacity-25"
-          style={{ background: "linear-gradient(135deg, #3B82F6, #00d4aa)" }}
+          style={{ background: "var(--gradient-brand)" }}
         />
         <div className="relative rounded-none md:rounded-2xl overflow-hidden border-y md:border border-white/[0.07] bg-[#1c2030] shadow-2xl shadow-black/30">
           <div className="flex items-center justify-between px-4 md:px-5 py-2.5 border-b border-white/[0.07]">
@@ -106,8 +106,8 @@ export function LiveChartPreview() {
               <div className="p-3 border-t border-white/[0.07]">
                 <Link
                   href="/trade"
-                  className="block w-full py-2.5 rounded-xl text-white font-semibold text-sm text-center transition-all"
-                  style={{ background: "#3B82F6", boxShadow: "0 4px 16px #3B82F633" }}
+                  className="block w-full py-2.5 rounded-xl text-white font-semibold text-sm text-center transition-all bg-gradient-brand"
+                  style={{ boxShadow: "0 4px 14px rgba(131,58,180,.4)" }}
                 >
                   Start Trading
                 </Link>

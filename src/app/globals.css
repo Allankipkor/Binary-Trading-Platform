@@ -8,6 +8,22 @@
   --color-card-hover: #222639;
 }
 
+/* Brand gradient: purple → red → lime */
+:root {
+  --gradient-brand: linear-gradient(90deg, rgba(131, 58, 180, 1) 0%, rgba(217, 0, 0, 1) 50%, rgba(194, 252, 69, 1) 100%);
+}
+
+.text-gradient-brand {
+  background: var(--gradient-brand);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.bg-gradient-brand {
+  background: var(--gradient-brand);
+}
+
 @keyframes marquee {
   0% {
     transform: translateX(0);
