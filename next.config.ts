@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import path from "path";
 
 const nextConfig: NextConfig = {
   images: {
@@ -11,8 +10,6 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // Ensure API routes handle larger payloads
   serverExternalPackages: ["bcryptjs"],
-  // Fix workspace root detection when using npm workspaces
-  outputFileTracingRoot: path.join(__dirname, "../../"),
 };
 
 export default nextConfig;
