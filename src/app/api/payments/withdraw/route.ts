@@ -3,12 +3,18 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
-const schema = z.object({
-  method: z.enum(["mpesa", "crypto"]),
-  amount: z.number().min(50).max(150000),
-  phone: z.string().optional(),
-  walletAddress: z.string().optional(),
-});
+const DEFAULTS = { minWithdrawal: "100", maxWithdrawal: "150000" };
+
+async function loadLimits() {
+  const rows = await prisma.siteSetting.findMany({
+    where: { key: { in: ["minWithdrawal", "maxWithdrawal"] } },
+  });
+  const map = new Map(rows.map((r) => [r.key, r.value]));
+  return {
+    minWithdrawal: Number(map.get("minWithdrawal") ?? DEFAULTS.minWithdrawal),
+    maxWithdrawal: Number(map.get("maxWithdrawal") ?? DEFAULTS.maxWithdrawal),
+  };
+}
 
 export async function GET() {
   const session = await auth();
@@ -25,10 +31,13 @@ export async function GET() {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
+  const { minWithdrawal, maxWithdrawal } = await loadLimits();
+
   return NextResponse.json({
     balance: user.balance,
     phone: user.phone,
     kycStatus: "not_submitted" as const,
+    limits: { minWithdrawal, maxWithdrawal },
   });
 }
 
@@ -39,6 +48,15 @@ export async function POST(req: Request) {
   }
 
   try {
+    const { minWithdrawal, maxWithdrawal } = await loadLimits();
+
+    const schema = z.object({
+      method: z.enum(["mpesa", "crypto"]),
+      amount: z.number().min(minWithdrawal).max(maxWithdrawal),
+      phone: z.string().optional(),
+      walletAddress: z.string().optional(),
+    });
+
     const body = await req.json();
     const parsed = schema.safeParse(body);
     if (!parsed.success) {

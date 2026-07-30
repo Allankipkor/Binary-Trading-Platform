@@ -32,9 +32,10 @@ export default function WithdrawPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState<WithdrawSuccess | null>(null);
   const [kesRate, setKesRate] = useState<number | null>(null);
+  const [limits, setLimits] = useState({ minWithdrawal: 100, maxWithdrawal: 150000 });
 
-  const MIN = 100;
-  const MAX = 150000;
+  const MIN = limits.minWithdrawal;
+  const MAX = limits.maxWithdrawal;
 
   useEffect(() => {
     fetch("/api/payments/rate")
@@ -49,6 +50,7 @@ export default function WithdrawPage() {
       .then((data) => {
         setBalance(data.balance ?? 0);
         if (data.phone) setPhone(data.phone);
+        if (data.limits) setLimits(data.limits);
       })
       .catch(() => setBalance(0));
   }, []);

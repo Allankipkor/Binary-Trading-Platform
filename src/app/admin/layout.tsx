@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { LayoutDashboard, Users, CreditCard, ArrowUpDown, LogOut, Menu, X } from "lucide-react";
+import { LayoutDashboard, Users, CreditCard, ArrowUpDown, Settings, LogOut, Menu, X } from "lucide-react";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/payments", label: "Payments", icon: CreditCard },
   { href: "/admin/transactions", label: "Transactions", icon: ArrowUpDown },
+  { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

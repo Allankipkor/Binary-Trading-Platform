@@ -32,14 +32,21 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
   const [cryptoResult, setCryptoResult] = useState<CryptoResult | null>(null);
   const [copied, setCopied] = useState(false);
   const [kesRate, setKesRate] = useState<number | null>(null);
+  const [limits, setLimits] = useState({ minDeposit: 5, maxDeposit: 10000 });
 
-  const MIN_DEPOSIT = 5;
+  const MIN_DEPOSIT = limits.minDeposit;
 
-  // Fetch USD → KES conversion rate
+  // Fetch USD → KES conversion rate and deposit limits
   useEffect(() => {
     fetch("/api/payments/rate")
       .then((r) => r.json())
       .then((d) => setKesRate(d.usdToKes))
+      .catch(() => {});
+    fetch("/api/admin/settings")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.settings) setLimits({ minDeposit: d.settings.minDeposit, maxDeposit: d.settings.maxDeposit });
+      })
       .catch(() => {});
   }, []);
 
@@ -194,12 +201,12 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
         <div className="p-4 sm:p-5 space-y-4 overflow-y-auto overscroll-contain flex-1">
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1.5">
-              Amount (USD) <span className="text-gray-600">· min ${MIN_DEPOSIT}</span>
+              Amount (USD) <span className="text-gray-600">· ${MIN_DEPOSIT} – ${limits.maxDeposit}</span>
             </label>
             <input
               type="number"
               min={MIN_DEPOSIT}
-              max={10000}
+              max={limits.maxDeposit}
               value={amount}
               onChange={(e) => setAmount(Number(e.target.value))}
               className="w-full px-4 py-3 rounded-xl bg-[#13161e] border border-white/[0.07] text-white text-sm focus:outline-none focus:border-[#833ab4]/50"

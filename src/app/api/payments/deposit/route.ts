@@ -10,11 +10,18 @@ import {
   isCryptoConfigured,
 } from "@/lib/crypto";
 
-const schema = z.object({
-  method: z.enum(["mpesa", "crypto", "card"]),
-  amount: z.number().min(5).max(10000),
-  phone: z.string().optional(),
-});
+const DEFAULTS = { minDeposit: "5", maxDeposit: "10000" };
+
+async function loadLimits() {
+  const rows = await prisma.siteSetting.findMany({
+    where: { key: { in: ["minDeposit", "maxDeposit"] } },
+  });
+  const map = new Map(rows.map((r) => [r.key, r.value]));
+  return {
+    minDeposit: Number(map.get("minDeposit") ?? DEFAULTS.minDeposit),
+    maxDeposit: Number(map.get("maxDeposit") ?? DEFAULTS.maxDeposit),
+  };
+}
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -23,6 +30,14 @@ export async function POST(req: Request) {
   }
 
   try {
+    const { minDeposit, maxDeposit } = await loadLimits();
+
+    const schema = z.object({
+      method: z.enum(["mpesa", "crypto", "card"]),
+      amount: z.number().min(minDeposit).max(maxDeposit),
+      phone: z.string().optional(),
+    });
+
     const body = await req.json();
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
