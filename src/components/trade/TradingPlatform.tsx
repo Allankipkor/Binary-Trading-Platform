@@ -820,7 +820,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
 
               {/* Menu items */}
               <nav className="flex flex-col">
-                {isAuthenticated && (session?.user as any)?.role === "admin" && (
+                {isAuthenticated && session?.user?.role === "admin" && (
                   <button
                     onClick={() => { setNavMenuOpen(false); router.push("/admin"); }}
                     className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06] hover:bg-blue-500/5 transition text-left"

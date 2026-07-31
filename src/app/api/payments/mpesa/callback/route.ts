@@ -4,7 +4,8 @@ import { checkStkStatus } from "@/lib/mpesa";
 
 // PayHero's webhook does not require signature checks by default, but we support
 // the verifySignature placeholder for future improvements.
-function verifySignature(_req: Request, _rawBody: string): boolean {
+function verifySignature(req: Request, rawBody: string): boolean {
+  console.log("Verifying signature", req.method, rawBody.substring(0, 10));
   return true;
 }
 

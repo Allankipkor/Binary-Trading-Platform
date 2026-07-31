@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   const session = await auth();
-  if (!session?.user?.id || (session.user as any).role !== "admin") {
+  if (!session?.user?.id || session.user.role !== "admin") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -32,7 +32,7 @@ export async function GET() {
 
 export async function PATCH(req: Request) {
   const session = await auth();
-  if (!session?.user?.id || (session.user as any).role !== "admin") {
+  if (!session?.user?.id || session.user.role !== "admin") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -44,7 +44,7 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "User ID is required" }, { status: 400 });
     }
 
-    const data: any = {};
+    const data: { balance?: number; demoBalance?: number; role?: string } = {};
     if (balance !== undefined) data.balance = parseFloat(balance);
     if (demoBalance !== undefined) data.demoBalance = parseFloat(demoBalance);
     if (role !== undefined) {

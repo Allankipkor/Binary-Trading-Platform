@@ -113,11 +113,13 @@ export function OrderPanel({
   stake,
   balance,
   tradeError,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onContractTypeChange,
   onStakeChange,
   onPlaceTrade,
   settledQueue,
   appliedSignal,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   compact = false,
 }: OrderPanelProps) {
   const [tradeMode, setTradeMode] = useState<"auto" | "manual">("auto");
@@ -147,6 +149,7 @@ export function OrderPanel({
   // result, so there's nothing ongoing to ask to stop mid-flight.
   const [autoRunning, setAutoRunning] = useState(false);
   const [autoDirection, setAutoDirection] = useState<"up" | "down" | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [autoMeta, setAutoMeta] = useState<{ digit?: number; contractType?: string; digitDirection?: string } | undefined>();
   const [liveTrades, setLiveTrades] = useState(0); // 1 while the single auto trade is pending, else 0
   // Mirrors autoRunning synchronously. `autoRunning` state only updates on

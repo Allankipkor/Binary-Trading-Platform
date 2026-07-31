@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { tickPrice, getPrice } from "@/lib/prices";
 
 export async function GET(req: Request) {

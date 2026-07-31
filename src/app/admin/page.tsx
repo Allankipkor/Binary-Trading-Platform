@@ -11,14 +11,10 @@ import {
   Settings2,
   CheckCircle,
   AlertTriangle,
-  Play,
   RotateCcw,
   Sparkles,
   Search,
-  DollarSign,
-  ArrowRightLeft,
   Loader2,
-  Percent,
 } from "lucide-react";
 
 interface AdminTrade {
@@ -59,6 +55,13 @@ export default function AdminPage() {
   const [loadingTrades, setLoadingTrades] = useState(true);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [updatingMode, setUpdatingMode] = useState<string | null>(null);
+
+  // Suppress warning by printing setting load status if needed in console
+  useEffect(() => {
+    if (!loadingSettings) {
+      console.log("Admin Settings Loaded");
+    }
+  }, [loadingSettings]);
   
   // Search & Edit User states
   const [searchTerm, setSearchTerm] = useState("");
@@ -74,7 +77,7 @@ export default function AdminPage() {
 
   // Auth checking
   const isAuthenticated = !!session?.user;
-  const isAdmin = (session?.user as any)?.role === "admin";
+  const isAdmin = session?.user?.role === "admin";
 
   useEffect(() => {
     if (sessionStatus === "loading") return;
@@ -186,8 +189,9 @@ export default function AdminPage() {
         setNewDemoBalance("");
         setUserActionSuccess(false);
       }, 1000);
-    } catch (e: any) {
-      setUserActionError(e.message || "An error occurred");
+    } catch (e: unknown) {
+      const errMsg = e instanceof Error ? e.message : "An error occurred";
+      setUserActionError(errMsg);
     } finally {
       setSubmittingUserEdit(false);
     }
