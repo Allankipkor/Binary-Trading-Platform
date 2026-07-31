@@ -15,6 +15,7 @@ model User {
   phone        String?
   balance      Float         @default(0)
   demoBalance  Float         @default(10000)
+  role         String        @default("user")
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   trades       Trade[]
@@ -66,3 +67,10 @@ model PriceFeed {
   price     Float    @default(1000)
   updatedAt DateTime @updatedAt
 }
+
+model MarketSetting {
+  id           String   @id @default("default")
+  manipulation String   @default("normal") // "normal" | "force_win" | "force_loss"
+  updatedAt    DateTime @updatedAt
+}
+

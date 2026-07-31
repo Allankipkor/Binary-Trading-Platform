@@ -21,6 +21,7 @@ import {
   Moon,
   Settings,
   ShieldCheck,
+  ShieldAlert,
   Sparkles,
   TrendingUp,
   Wallet,
@@ -819,6 +820,18 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
 
               {/* Menu items */}
               <nav className="flex flex-col">
+                {isAuthenticated && (session?.user as any)?.role === "admin" && (
+                  <button
+                    onClick={() => { setNavMenuOpen(false); router.push("/admin"); }}
+                    className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06] hover:bg-blue-500/5 transition text-left"
+                  >
+                    <span className="flex items-center gap-3 text-sm font-semibold text-blue-400">
+                      <ShieldAlert className="w-5 h-5 text-blue-400" />
+                      Admin Control Center
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-blue-400/50" />
+                  </button>
+                )}
                 <button
                   onClick={() => { setNavMenuOpen(false); router.push("/account/settings"); }}
                   className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06] hover:bg-white/[0.03] transition text-left"
