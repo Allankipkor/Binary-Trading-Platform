@@ -26,7 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="manifest" href="/manifest.json" />
+        <link rel="manifest" href="/manifest.json?v=3" />
       </head>
       <body className={`${inter.className} antialiased`}>
         <SessionProvider>{children}</SessionProvider>
