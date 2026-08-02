@@ -46,6 +46,8 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   // Auto-scroll ref
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -361,55 +363,53 @@ export default function MessagesPage() {
         {/* VIEW 1: THREAD LIST (Shows if no active thread is open) */}
         <div className={`flex-grow flex flex-col relative h-full w-full ${activeThreadId ? "hidden" : "flex"}`}>
           
-          {/* Header search bar */}
-          <div className="p-3 bg-white">
-            <div className="flex items-center gap-3 bg-[#f1f3f4] rounded-full px-4 py-2 shadow-sm border border-transparent focus-within:border-gray-200">
-              <button onClick={() => router.push("/withdraw")} className="p-1 rounded-full text-gray-500 hover:bg-gray-200 transition">
-                <ChevronLeft className="w-5 h-5" />
+          {/* Google Messages Custom Header */}
+          {showSearch ? (
+            <div className="flex items-center gap-3 bg-white h-14 px-4 w-full border-b border-gray-100 animate-[slideDown_0.15s_ease-out]">
+              <button
+                onClick={() => {
+                  setShowSearch(false);
+                  setSearchTerm("");
+                }}
+                className="p-1 rounded-full text-gray-500 hover:bg-gray-100 transition"
+              >
+                <ArrowLeft className="w-5 h-5" />
               </button>
-              
-              <div className="flex-grow flex items-center gap-2">
-                <Search className="w-4 h-4 text-gray-400 shrink-0" />
-                <input
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search images & videos"
-                  className="w-full bg-transparent border-none text-[15px] outline-none text-[#1f1f1f] placeholder:text-gray-500"
-                />
-              </div>
-
-              {/* Avatar circle initials */}
-              <div className="w-7 h-7 rounded-full bg-[#f58220] flex items-center justify-center text-xs font-black text-white shrink-0">
-                A
+              <input
+                autoFocus
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search messages..."
+                className="w-full bg-transparent border-none text-[15px] outline-none text-[#1f1f1f] placeholder:text-gray-400 h-8"
+              />
+            </div>
+          ) : (
+            <div className="flex items-center justify-between h-14 px-5 bg-white border-b border-gray-100">
+              <span className="text-[20px] font-semibold tracking-tight select-none">
+                <span className="text-[#4285F4]">G</span>
+                <span className="text-[#EA4335]">o</span>
+                <span className="text-[#FBBC05]">o</span>
+                <span className="text-[#4285F4]">g</span>
+                <span className="text-[#34A853]">l</span>
+                <span className="text-[#EA4335]">e</span>
+                <span className="text-[#5f6368] font-normal"> Messages</span>
+              </span>
+              <div className="flex items-center gap-3.5">
+                <button
+                  onClick={() => setShowSearch(true)}
+                  className="p-1.5 rounded-full hover:bg-gray-100 text-gray-700 transition"
+                >
+                  <Search className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setShowProfileMenu(true)}
+                  className="w-7 h-7 rounded-full bg-[#f58220] flex items-center justify-center text-xs font-black text-white shrink-0 shadow-sm hover:brightness-95 transition"
+                >
+                  A
+                </button>
               </div>
             </div>
-          </div>
-
-          {/* Subheader branding */}
-          <div className="px-5 py-2 flex items-center justify-between">
-            <h1 className="text-xl font-bold tracking-tight text-gray-800">Google Messages</h1>
-            
-            <div className="flex gap-2">
-              {dbMessages.length > 0 && (
-                <button
-                  onClick={handleDownloadBackup}
-                  title="Download Backup"
-                  className="p-1.5 rounded-full hover:bg-gray-100 text-gray-600 transition"
-                >
-                  <Download className="w-4 h-4" />
-                </button>
-              )}
-              {dbMessages.length > 0 && (
-                <button
-                  onClick={handleClearInbox}
-                  title="Clear Logs"
-                  className="p-1.5 rounded-full hover:bg-gray-100 text-rose-500 transition"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          </div>
+          )}
 
           {/* Threads list container */}
           <div className="flex-grow overflow-y-auto divide-y divide-transparent px-1 pb-24">
@@ -535,6 +535,64 @@ export default function MessagesPage() {
         )}
 
       </div>
+
+      {/* Google Account Profile Menu Modal */}
+      {showProfileMenu && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 backdrop-blur-sm p-4 pt-16" onClick={() => setShowProfileMenu(false)}>
+          <div className="w-full max-w-[320px] bg-white border border-gray-200 rounded-3xl overflow-hidden shadow-2xl p-4 space-y-4 animate-[slideDown_0.15s_ease-out]" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+              <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Account Options</span>
+              <button onClick={() => setShowProfileMenu(false)} className="text-gray-400 hover:text-gray-600 text-xs font-bold">Close</button>
+            </div>
+            
+            <div className="flex items-center gap-3 py-1">
+              <div className="w-10 h-10 rounded-full bg-[#f58220] flex items-center justify-center text-sm font-black text-white">
+                A
+              </div>
+              <div>
+                <p className="text-sm font-bold text-gray-800">Shabiki User</p>
+                <p className="text-xs text-gray-500">Live Trading Account</p>
+              </div>
+            </div>
+
+            <div className="space-y-1 pt-2">
+              <button
+                onClick={() => {
+                  setShowProfileMenu(false);
+                  router.push("/withdraw");
+                }}
+                className="w-full px-3 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-xl transition font-medium flex items-center gap-2"
+              >
+                <ArrowLeft className="w-4 h-4 text-gray-500" />
+                Back to Shabiki Markets
+              </button>
+              
+              <button
+                onClick={() => {
+                  setShowProfileMenu(false);
+                  handleDownloadBackup();
+                }}
+                className="w-full px-3 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-xl transition font-medium flex items-center gap-2"
+              >
+                <Download className="w-4 h-4 text-gray-500" />
+                Download Backup (.txt)
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowProfileMenu(false);
+                  handleClearInbox();
+                }}
+                className="w-full px-3 py-2.5 text-left text-sm text-rose-600 hover:bg-rose-50 rounded-xl transition font-medium flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4 text-rose-500" />
+                Clear Message Logs
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
