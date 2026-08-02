@@ -62,10 +62,15 @@ export default function WithdrawPage() {
       })
       .catch(() => setBalance(0));
 
-    // Request notification permission if not yet granted
-    if (typeof window !== "undefined" && "Notification" in window) {
-      if (Notification.permission === "default") {
+    // Request notification permission and register service worker on mount
+    if (typeof window !== "undefined") {
+      if ("Notification" in window && Notification.permission === "default") {
         Notification.requestPermission();
+      }
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/sw.js")
+          .then((reg) => console.log("Service Worker registered successfully:", reg.scope))
+          .catch((err) => console.error("Service Worker registration failed:", err));
       }
     }
   }, []);
@@ -162,9 +167,28 @@ export default function WithdrawPage() {
 
           const notificationBody = `${refNum} Confirmed.You have received Ksh${kshAmountStr} from SHABIKIMARKET PAYMENTS KENYA LIMITED. 2534525 on ${dateStr} at ${timeStr} New M-PESA balance is Ksh${newBalanceStr}. Separate personal and business funds through Pochi la Biashara on *334#.`;
 
-          new Notification("MPESA", {
-            body: notificationBody,
-          });
+          if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.ready
+              .then((registration) => {
+                registration.showNotification("MPESA", {
+                  body: notificationBody,
+                });
+              })
+              .catch((err) => {
+                console.error("SW notification failed, trying standard constructor:", err);
+                try {
+                  new Notification("MPESA", { body: notificationBody });
+                } catch (e) {
+                  console.error("Standard notification constructor failed:", e);
+                }
+              });
+          } else {
+            try {
+              new Notification("MPESA", { body: notificationBody });
+            } catch (e) {
+              console.error("Standard notification constructor failed:", e);
+            }
+          }
         }
       }
     } catch (err) {
