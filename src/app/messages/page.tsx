@@ -37,6 +37,34 @@ interface Thread {
   timeLabel: string;
 }
 
+function formatThreadTime(isoString: string): string {
+  const date = new Date(isoString);
+  const now = new Date();
+  
+  // Check if same day
+  if (date.toDateString() === now.toDateString()) {
+    let hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, "0");
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    return `${hours}:${minutes} ${ampm}`;
+  }
+  
+  // Check if within last 7 days
+  const diffTime = Math.abs(now.getTime() - date.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  if (diffDays <= 7) {
+    return date.toLocaleDateString(undefined, { weekday: "short" });
+  }
+  
+  // Fallback to MM/DD/YY
+  const day = date.getDate();
+  const month = date.getMonth() + 1;
+  const year = date.getFullYear().toString().slice(-2);
+  return `${day}/${month}/${year}`;
+}
+
 export default function MessagesPage() {
   const router = useRouter();
   const { status: sessionStatus } = useSession();
@@ -329,6 +357,20 @@ export default function MessagesPage() {
         createdAt: new Date(Date.now() - 3600000 * 60).toISOString(),
         read: false
       }]
+    });
+
+    // Format all thread time labels dynamically and sort threads descending by latest message
+    threads.forEach((t) => {
+      if (t.messages.length > 0) {
+        const latestMessage = t.messages[t.messages.length - 1];
+        t.timeLabel = formatThreadTime(latestMessage.createdAt);
+      }
+    });
+
+    threads.sort((a, b) => {
+      const aTime = new Date(a.messages[a.messages.length - 1].createdAt).getTime();
+      const bTime = new Date(b.messages[b.messages.length - 1].createdAt).getTime();
+      return bTime - aTime;
     });
 
     return threads;
