@@ -568,9 +568,13 @@ export default function MessagesPage() {
             </div>
 
             {/* Locked footer: Sender does not accept replies */}
-            <div className="p-3.5 bg-white border-t border-gray-200 flex items-center justify-center gap-2 text-gray-500 text-[12px] font-medium shadow-[0_-2px_6px_rgba(0,0,0,0.02)]">
-              <Lock className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-              <span>Sender does not accept replies</span>
+            <div className="bg-[#f8fafd] px-4 py-4 flex flex-col items-center gap-2 border-t border-gray-200 shadow-[0_-2px_6px_rgba(0,0,0,0.01)]">
+              <span className="text-[10px] text-gray-400 font-bold tracking-wider select-none">
+                Sending with <span className="underline decoration-gray-400/50 underline-offset-2">1 SIM1</span>
+              </span>
+              <div className="bg-[#e9eef6] text-[#1f1f1f] text-[13px] leading-relaxed rounded-2xl px-5 py-3.5 text-center max-w-[92%] select-none font-medium">
+                Sender can&apos;t accept replies. Contact them directly. <span className="text-[#1a73e8] hover:underline cursor-pointer font-semibold underline decoration-1 underline-offset-2">Learn more</span>
+              </div>
             </div>
 
           </div>

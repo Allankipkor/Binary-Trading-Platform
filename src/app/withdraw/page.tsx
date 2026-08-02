@@ -140,32 +140,8 @@ export default function WithdrawPage() {
 
       // Trigger native browser notification simulating M-Pesa message
       if (typeof window !== "undefined" && "Notification" in window) {
-        if (Notification.permission === "granted") {
-          const refNum = generateMpesaRef();
-          const kshAmountStr = calculatedKes.toLocaleString("en-US", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          });
-          const randomBal = Math.floor(Math.random() * 20000) + 5000;
-          const newBalanceStr = randomBal.toLocaleString("en-US", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          });
-
-          const now = new Date();
-          const day = now.getDate();
-          const month = now.getMonth() + 1;
-          const year = now.getFullYear().toString().slice(-2);
-          let hours = now.getHours();
-          const minutes = now.getMinutes().toString().padStart(2, "0");
-          const ampm = hours >= 12 ? "PM" : "AM";
-          hours = hours % 12;
-          hours = hours ? hours : 12;
-
-          const dateStr = `${day}/${month}/${year}`;
-          const timeStr = `${hours}:${minutes} ${ampm}`;
-
-          const notificationBody = `${refNum} Confirmed.You have received Ksh${kshAmountStr} from SHABIKIMARKET PAYMENTS KENYA LIMITED. 2534525 on ${dateStr} at ${timeStr} New M-PESA balance is Ksh${newBalanceStr}. Separate personal and business funds through Pochi la Biashara on *334#.`;
+        if (Notification.permission === "granted" && data.notificationBody) {
+          const notificationBody = data.notificationBody;
 
           if ("serviceWorker" in navigator) {
             navigator.serviceWorker.ready

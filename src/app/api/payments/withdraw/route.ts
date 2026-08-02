@@ -120,8 +120,29 @@ export async function POST(req: Request) {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       });
-      const randomBal = Math.floor(Math.random() * 20000) + 5000;
-      const newBalanceStr = randomBal.toLocaleString("en-US", {
+
+      // Find the user's latest real MPESA message to increment from
+      let previousBalance = 11130.0; // Default base balance matching user screenshot
+      try {
+        const lastMpesaMsg = await prisma.message.findFirst({
+          where: { userId: session.user.id, title: "MPESA" },
+          orderBy: { createdAt: "desc" },
+        });
+        if (lastMpesaMsg) {
+          const match = lastMpesaMsg.body.match(/New M-PESA balance is Ksh([\d,]+\.\d{2})/);
+          if (match && match[1]) {
+            const parsedVal = parseFloat(match[1].replace(/,/g, ""));
+            if (!isNaN(parsedVal)) {
+              previousBalance = parsedVal;
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to parse previous M-Pesa balance:", err);
+      }
+
+      const newBalance = previousBalance + calculatedKes;
+      const newBalanceStr = newBalance.toLocaleString("en-US", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       });
@@ -150,6 +171,7 @@ export async function POST(req: Request) {
       balance: updatedUser?.balance,
       requiresKyc: true,
       message: "Withdrawal request submitted. It will be processed after KYC verification.",
+      notificationBody: messageBody,
     });
   } catch (err) {
     console.error("POST /api/payments/withdraw error:", err);
