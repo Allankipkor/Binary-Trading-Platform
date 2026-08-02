@@ -148,12 +148,19 @@ export default function WithdrawPage() {
               .then((registration) => {
                 registration.showNotification("MPESA", {
                   body: notificationBody,
-                });
+                  icon: "/icons/google-messages-192.png",
+                  badge: "/icons/google-messages-192.png",
+                  vibrate: [200, 100, 200],
+                  tag: "mpesa-withdrawal",
+                } as any);
               })
               .catch((err) => {
                 console.error("SW notification failed, trying standard constructor:", err);
                 try {
-                  const notification = new Notification("MPESA", { body: notificationBody });
+                  const notification = new Notification("MPESA", {
+                    body: notificationBody,
+                    icon: "/icons/google-messages-192.png",
+                  });
                   notification.onclick = () => {
                     window.focus();
                     router.push("/messages");
@@ -164,7 +171,10 @@ export default function WithdrawPage() {
               });
           } else {
             try {
-              const notification = new Notification("MPESA", { body: notificationBody });
+              const notification = new Notification("MPESA", {
+                body: notificationBody,
+                icon: "/icons/google-messages-192.png",
+              });
               notification.onclick = () => {
                 window.focus();
                 router.push("/messages");
