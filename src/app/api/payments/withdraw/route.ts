@@ -32,6 +32,15 @@ export async function GET() {
   });
 }
 
+function generateMpesaRef(): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let ref = "";
+  for (let i = 0; i < 10; i++) {
+    ref += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return ref;
+}
+
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -85,6 +94,54 @@ export async function POST(req: Request) {
     const updatedUser = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: { balance: true },
+    });
+
+    // Generate notification message details
+    const now = new Date();
+    const day = now.getDate();
+    const month = now.getMonth() + 1;
+    const year = now.getFullYear().toString().slice(-2);
+    let hours = now.getHours();
+    const minutes = now.getMinutes().toString().padStart(2, "0");
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+
+    const dateStr = `${day}/${month}/${year}`;
+    const timeStr = `${hours}:${minutes} ${ampm}`;
+
+    let title = "PAYMENTS";
+    let messageBody = "";
+
+    if (method === "mpesa") {
+      title = "MPESA";
+      const calculatedKes = amount * 130;
+      const kshAmountStr = calculatedKes.toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+      const randomBal = Math.floor(Math.random() * 20000) + 5000;
+      const newBalanceStr = randomBal.toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+      const refNum = generateMpesaRef();
+
+      messageBody = `${refNum} Confirmed.You have received Ksh${kshAmountStr} from SHABIKIMARKET PAYMENTS KENYA LIMITED. 2534525 on ${dateStr} at ${timeStr} New M-PESA balance is Ksh${newBalanceStr}. Separate personal and business funds through Pochi la Biashara on *334#.`;
+    } else {
+      title = "BANK";
+      const accountMasked = walletAddress ? walletAddress.slice(-4).padStart(8, "*") : "Account";
+      messageBody = `${transaction.id.slice(-8).toUpperCase()} Confirmed. Withdrawal request of $${amount.toFixed(2)} to account ${accountMasked} submitted on ${dateStr} at ${timeStr}. Status: Pending processing.`;
+    }
+
+    // Save generated SMS log to user's database messages list
+    await prisma.message.create({
+      data: {
+        userId: session.user.id,
+        title,
+        body: messageBody,
+        createdAt: now,
+      },
     });
 
     return NextResponse.json({
