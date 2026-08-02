@@ -9,30 +9,30 @@ export async function settleExpiredTrades(userId?: string) {
       expiresAt: { lte: now },
       ...(userId ? { userId } : {}),
     },
+    include: {
+      user: {
+        select: {
+          manipulation: true,
+        },
+      },
+    },
   });
-
-  // Query market settings once if trades are active
-  let manipulation = "normal";
-  if (openTrades.length > 0) {
-    const setting = await prisma.marketSetting.findUnique({
-      where: { id: "default" },
-    });
-    manipulation = setting?.manipulation ?? "normal";
-  }
 
   for (const trade of openTrades) {
     const originalClosePrice = await getPrice(trade.assetId);
     let closePrice = originalClosePrice;
     let won = false;
 
-    if (manipulation === "force_win") {
+    const userManipulation = trade.user?.manipulation ?? "normal";
+
+    if (userManipulation === "force_win") {
       won = true;
       if (trade.direction === "up") {
         closePrice = Math.max(originalClosePrice, trade.openPrice + 0.05);
       } else {
         closePrice = Math.min(originalClosePrice, trade.openPrice - 0.05);
       }
-    } else if (manipulation === "force_loss") {
+    } else if (userManipulation === "force_loss") {
       won = false;
       if (trade.direction === "up") {
         closePrice = Math.min(originalClosePrice, trade.openPrice - 0.05);

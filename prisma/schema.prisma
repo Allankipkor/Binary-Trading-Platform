@@ -16,6 +16,7 @@ model User {
   balance      Float         @default(0)
   demoBalance  Float         @default(10000)
   role         String        @default("user")
+  manipulation String        @default("normal") // "normal" | "force_win" | "force_loss"
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   trades       Trade[]

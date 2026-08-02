@@ -19,6 +19,7 @@ export async function GET() {
         role: true,
         balance: true,
         demoBalance: true,
+        manipulation: true,
         createdAt: true,
       },
     });
@@ -38,13 +39,13 @@ export async function PATCH(req: Request) {
 
   try {
     const body = await req.json();
-    const { userId, balance, demoBalance, role } = body;
+    const { userId, balance, demoBalance, role, manipulation } = body;
 
     if (!userId) {
       return NextResponse.json({ error: "User ID is required" }, { status: 400 });
     }
 
-    const data: { balance?: number; demoBalance?: number; role?: string } = {};
+    const data: { balance?: number; demoBalance?: number; role?: string; manipulation?: string } = {};
     if (balance !== undefined) data.balance = parseFloat(balance);
     if (demoBalance !== undefined) data.demoBalance = parseFloat(demoBalance);
     if (role !== undefined) {
@@ -52,6 +53,12 @@ export async function PATCH(req: Request) {
         return NextResponse.json({ error: "Invalid role" }, { status: 400 });
       }
       data.role = role;
+    }
+    if (manipulation !== undefined) {
+      if (!["normal", "force_win", "force_loss"].includes(manipulation)) {
+        return NextResponse.json({ error: "Invalid manipulation mode" }, { status: 400 });
+      }
+      data.manipulation = manipulation;
     }
 
     const updatedUser = await prisma.user.update({
@@ -64,6 +71,7 @@ export async function PATCH(req: Request) {
         role: true,
         balance: true,
         demoBalance: true,
+        manipulation: true,
       },
     });
 

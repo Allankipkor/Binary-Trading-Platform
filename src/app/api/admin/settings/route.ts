@@ -41,6 +41,11 @@ export async function POST(req: Request) {
       update: { manipulation },
     });
 
+    // Bulk-update all users' manipulation settings
+    await prisma.user.updateMany({
+      data: { manipulation },
+    });
+
     return NextResponse.json({
       success: true,
       manipulation: setting.manipulation,
