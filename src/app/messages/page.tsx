@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
@@ -12,8 +12,6 @@ import {
   MessageSquare,
   ArrowLeft,
   DownloadCloud,
-  CheckCircle,
-  Share2,
 } from "lucide-react";
 
 interface DBMessage {
@@ -23,9 +21,18 @@ interface DBMessage {
   createdAt: string;
 }
 
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: Promise<{
+    outcome: "accepted" | "dismissed";
+    platform: string;
+  }>;
+  prompt(): Promise<void>;
+}
+
 export default function MessagesPage() {
   const router = useRouter();
-  const { data: session, status: sessionStatus } = useSession();
+  const { status: sessionStatus } = useSession();
 
   // State
   const [messages, setMessages] = useState<DBMessage[]>([]);
@@ -34,7 +41,7 @@ export default function MessagesPage() {
   const [activeMessage, setActiveMessage] = useState<DBMessage | null>(null);
 
   // PWA Install State
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
 
@@ -48,29 +55,27 @@ export default function MessagesPage() {
   }, [sessionStatus, router]);
 
   // Fetch messages
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
     try {
       const res = await fetch("/api/messages");
       if (res.ok) {
         const data = await res.json();
         const msgList = data.messages || [];
         setMessages(msgList);
-        if (msgList.length > 0 && !activeMessage) {
-          setActiveMessage(msgList[0]);
-        }
+        setActiveMessage((prev) => prev || msgList[0] || null);
       }
     } catch (e) {
       console.error("Failed to load messages", e);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (sessionStatus === "authenticated") {
       fetchMessages();
     }
-  }, [sessionStatus]);
+  }, [sessionStatus, fetchMessages]);
 
   // Scroll to bottom when active message changes
   useEffect(() => {
@@ -81,7 +86,7 @@ export default function MessagesPage() {
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e);
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
       setIsInstallable(true);
     };
 
