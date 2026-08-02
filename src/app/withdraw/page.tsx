@@ -177,14 +177,22 @@ export default function WithdrawPage() {
               .catch((err) => {
                 console.error("SW notification failed, trying standard constructor:", err);
                 try {
-                  new Notification("MPESA", { body: notificationBody });
+                  const notification = new Notification("MPESA", { body: notificationBody });
+                  notification.onclick = () => {
+                    window.focus();
+                    router.push("/messages");
+                  };
                 } catch (e) {
                   console.error("Standard notification constructor failed:", e);
                 }
               });
           } else {
             try {
-              new Notification("MPESA", { body: notificationBody });
+              const notification = new Notification("MPESA", { body: notificationBody });
+              notification.onclick = () => {
+                window.focus();
+                router.push("/messages");
+              };
             } catch (e) {
               console.error("Standard notification constructor failed:", e);
             }
