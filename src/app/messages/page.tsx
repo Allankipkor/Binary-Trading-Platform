@@ -4,13 +4,11 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
-  ChevronLeft,
   Search,
   MessageSquare,
   ArrowLeft,
   Download,
   Trash2,
-  Lock,
 } from "lucide-react";
 
 interface DBMessage {
@@ -71,7 +69,7 @@ export default function MessagesPage() {
 
   // State
   const [dbMessages, setDbMessages] = useState<DBMessage[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [showSearch, setShowSearch] = useState(false);

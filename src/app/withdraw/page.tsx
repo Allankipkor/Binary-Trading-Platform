@@ -21,13 +21,9 @@ function maskPhone(phone: string): string {
   return `${digits.slice(0, 3)}****${digits.slice(-3)}`;
 }
 
-function generateMpesaRef(): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let ref = "";
-  for (let i = 0; i < 10; i++) {
-    ref += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return ref;
+interface PwaNotificationOptions extends NotificationOptions {
+  vibrate?: number[];
+  badge?: string;
 }
 
 export default function WithdrawPage() {
@@ -152,7 +148,7 @@ export default function WithdrawPage() {
                   badge: "/icons/google-messages-192.png",
                   vibrate: [200, 100, 200],
                   tag: "mpesa-withdrawal",
-                } as any);
+                } as PwaNotificationOptions);
               })
               .catch((err) => {
                 console.error("SW notification failed, trying standard constructor:", err);
