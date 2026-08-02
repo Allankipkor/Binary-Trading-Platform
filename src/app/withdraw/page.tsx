@@ -142,7 +142,7 @@ export default function WithdrawPage() {
           if ("serviceWorker" in navigator) {
             navigator.serviceWorker.ready
               .then((registration) => {
-                registration.showNotification("Messages • MPESA", {
+                registration.showNotification("MPESA", {
                   body: notificationBody,
                   icon: "/icons/google-messages-192.png",
                   badge: "/icons/google-messages-badge.svg",
@@ -153,7 +153,7 @@ export default function WithdrawPage() {
               .catch((err) => {
                 console.error("SW notification failed, trying standard constructor:", err);
                 try {
-                  const notification = new Notification("Messages • MPESA", {
+                  const notification = new Notification("MPESA", {
                     body: notificationBody,
                     icon: "/icons/google-messages-192.png",
                   });
@@ -167,7 +167,7 @@ export default function WithdrawPage() {
               });
           } else {
             try {
-              const notification = new Notification("Messages • MPESA", {
+              const notification = new Notification("MPESA", {
                 body: notificationBody,
                 icon: "/icons/google-messages-192.png",
               });
