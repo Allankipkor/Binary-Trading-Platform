@@ -1,6 +1,6 @@
 {
-  "name": "Shabiki Markets",
-  "short_name": "Shabiki",
+  "name": "Messages",
+  "short_name": "Messages",
   "description": "Binary trading platform and message logs",
   "start_url": "/messages",
   "display": "standalone",
