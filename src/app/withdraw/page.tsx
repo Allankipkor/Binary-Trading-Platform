@@ -31,6 +31,15 @@ export default function WithdrawPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState<WithdrawSuccess | null>(null);
+  const [toasts, setToasts] = useState<{ id: string; type: "success" | "error"; message: string }[]>([]);
+
+  const pushToast = (type: "success" | "error", message: string) => {
+    const id = Math.random().toString(36).slice(2, 9);
+    setToasts((prev) => [...prev, { id, type, message }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  };
 
   const MIN = 100;
   const MAX = 150000;
@@ -50,23 +59,33 @@ export default function WithdrawPage() {
     const amt = parseFloat(amount);
 
     if (!amt || amt < MIN) {
-      setError(`Minimum withdrawal is $${MIN.toFixed(2)}`);
+      const msg = `Minimum withdrawal is $${MIN.toFixed(2)}`;
+      setError(msg);
+      pushToast("error", msg);
       return;
     }
     if (amt > MAX) {
-      setError(`Maximum withdrawal is $${MAX.toFixed(2)}`);
+      const msg = `Maximum withdrawal is $${MAX.toFixed(2)}`;
+      setError(msg);
+      pushToast("error", msg);
       return;
     }
     if (balance !== null && amt > balance) {
-      setError("Amount exceeds your available balance");
+      const msg = "Amount exceeds your available balance";
+      setError(msg);
+      pushToast("error", msg);
       return;
     }
     if (tab === "mpesa" && !phone) {
-      setError("M-Pesa phone number is required");
+      const msg = "M-Pesa phone number is required";
+      setError(msg);
+      pushToast("error", msg);
       return;
     }
     if (tab === "bank" && !walletAddress) {
-      setError("Bank account details are required");
+      const msg = "Bank account details are required";
+      setError(msg);
+      pushToast("error", msg);
       return;
     }
 
@@ -93,8 +112,11 @@ export default function WithdrawPage() {
         phone: data.phone,
         method: tab === "mpesa" ? "mpesa" : "crypto",
       });
+      pushToast("success", `Withdrawal request of $${amt.toFixed(2)} submitted successfully.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Withdrawal failed");
+      const msg = err instanceof Error ? err.message : "Withdrawal failed";
+      setError(msg);
+      pushToast("error", msg);
     } finally {
       setLoading(false);
     }
@@ -102,6 +124,34 @@ export default function WithdrawPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0c12] text-white">
+      {/* Toast notifications */}
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[250] w-[92%] max-w-sm flex flex-col gap-2 pointer-events-none">
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className={`bg-[#0d0f17]/95 backdrop-blur-md border rounded-2xl px-4 py-3 shadow-2xl animate-[slideDown_0.25s_ease-out] flex items-start gap-3 pointer-events-auto ${
+              t.type === "success" ? "border-emerald-500/30" : "border-rose-500/30"
+            }`}
+          >
+            <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
+              t.type === "success" ? "bg-emerald-500/15" : "bg-rose-500/15"
+            }`}>
+              {t.type === "success" ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              ) : (
+                <X className="w-4 h-4 text-rose-400" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">
+                {t.type === "success" ? "System Notification" : "Transaction Failed"}
+              </p>
+              <p className="text-sm font-bold text-white leading-tight">{t.message}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
       <header className="flex items-center gap-3 px-4 h-14 border-b border-white/[0.07] sticky top-0 bg-[#0a0c12]/95 backdrop-blur z-10">
         <button onClick={() => router.back()} className="p-1.5 rounded-lg hover:bg-white/5">
           <ChevronLeft className="w-5 h-5" />
