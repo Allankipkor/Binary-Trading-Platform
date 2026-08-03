@@ -536,7 +536,7 @@ export default function MessagesPage() {
 
         {/* VIEW 2: CHAT CONVERSATION THREAD */}
         {activeThread && (
-          <div className="flex-grow flex flex-col h-full bg-white w-full relative">
+          <div className="flex-grow flex flex-col h-full bg-white w-full relative overflow-hidden">
             
             {/* Thread Header */}
             <header className="h-14 bg-white border-b border-gray-200 flex items-center px-4 justify-between sticky top-0 z-10 select-none">
@@ -570,8 +570,8 @@ export default function MessagesPage() {
             </header>
 
             {/* Bubble list thread */}
-            <div className="flex-grow overflow-y-auto p-4 space-y-4 flex flex-col justify-end">
-              <div className="space-y-4">
+            <div className="flex-grow overflow-y-auto p-4 relative">
+              <div className="space-y-4 flex flex-col min-h-full justify-end">
                 {activeThread.messages.map((m) => (
                   <div key={m.id} className="flex flex-col gap-2">
                     {/* Timestamp bubble */}
