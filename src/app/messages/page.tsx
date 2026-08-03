@@ -539,7 +539,7 @@ export default function MessagesPage() {
           <div className="flex-grow flex flex-col h-full bg-white w-full relative overflow-hidden">
             
             {/* Thread Header */}
-            <header className="h-14 bg-white border-b border-gray-200 flex items-center px-4 justify-between sticky top-0 z-10 select-none">
+            <header className="absolute top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 flex items-center px-4 justify-between z-20 select-none">
               <div className="flex items-center gap-3.5">
                 <button
                   onClick={() => {
@@ -570,7 +570,7 @@ export default function MessagesPage() {
             </header>
 
             {/* Bubble list thread */}
-            <div className="flex-grow overflow-y-auto p-4 relative">
+            <div className="flex-grow overflow-y-auto pt-14 pb-4 px-4 relative">
               <div className="space-y-4 flex flex-col min-h-full justify-end">
                 {activeThread.messages.map((m) => (
                   <div key={m.id} className="flex flex-col gap-2">
