@@ -583,48 +583,52 @@ export default function MessagesPage() {
                     </div>
 
                     {/* Chat Content layout (includes Safaricom card attachments if MPESA) */}
-                    <div className="flex flex-col items-start gap-1">
-                      {activeThread.title === "MPESA" && (
-                        /* Top Safaricom / M-pesa Header Card */
-                        <div className="w-full max-w-[320px] bg-[#e8f5e9] border border-[#a5d6a7]/30 rounded-[1.25rem] overflow-hidden shadow-sm flex flex-col my-0.5 select-none font-sans">
-                          <div className="bg-white p-2.5 flex items-center justify-between border-b border-[#e8f5e9] h-10">
-                            <div className="flex items-center gap-1.5">
-                              <div className="w-4 h-4 rounded-full bg-[#1b5e20] flex items-center justify-center font-black text-white text-[9px] italic">
-                                S
-                              </div>
-                              <span className="text-[11px] font-black text-[#1b5e20] tracking-tight">Safaricom</span>
-                            </div>
-                            <div className="flex items-center bg-[#4caf50] px-1.5 py-0.5 rounded text-[8px] font-black text-white uppercase tracking-wider h-4 leading-none">
-                              m-pesa
-                            </div>
-                          </div>
-                          <div className="px-3 py-2 bg-[#e8f5e9] flex flex-col justify-center">
-                            <p className="text-[12px] font-extrabold text-gray-800 tracking-tight leading-none mb-0.5">Fintech App</p>
-                            <p className="text-[10px] text-[#2e7d32] font-bold">saf.cx</p>
-                          </div>
-                        </div>
-                      )}
-
+                    <div className="flex flex-col items-start gap-1 w-full">
                       {/* Text Bubble container */}
                       <div className="flex items-end gap-2 justify-start max-w-[90%]">
-                        <div className="bg-[#f1f3f4] text-[#1f1f1f] text-[13.5px] font-normal rounded-2xl rounded-bl-sm px-4 py-3 relative leading-relaxed select-text font-sans border border-gray-100/20">
+                        <div className="bg-[#f1f3f4] text-[#1f1f1f] text-[13.5px] font-normal rounded-2xl rounded-bl-sm px-4 py-3 relative leading-relaxed select-text font-sans border border-gray-100/20 shadow-sm">
                           {m.body}
                         </div>
                       </div>
 
                       {activeThread.title === "MPESA" && (
-                        /* Bottom Safaricom "S" Logo card */
-                        <div className="w-full max-w-[320px] bg-white border border-gray-200/50 rounded-[1.25rem] overflow-hidden shadow-sm flex flex-col my-0.5 select-none relative group font-sans">
-                          <div className="h-32 bg-[#1b5e20] flex items-center justify-center relative">
-                            <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-md relative overflow-hidden border border-[#2e7d32]/10">
-                              <span className="text-4xl font-black text-[#d32f2f] italic tracking-tighter">S</span>
-                              <div className="absolute bottom-0 inset-x-0 h-4 bg-[#4caf50]/20 transform -skew-y-12"></div>
+                        /* Unified Safaricom / M-Pesa Link Preview Card */
+                        <div className="flex items-center self-start max-w-[90%] my-1.5 font-sans relative">
+                          <div className="w-full max-w-[280px] bg-[#e8f5e9] border border-gray-200 rounded-[1.25rem] overflow-hidden shadow-sm flex flex-col select-none">
+                            {/* Top Image Area */}
+                            <div className="bg-[#1b5e20] p-4 flex flex-col items-center justify-center relative h-36">
+                              {/* Large red arc with white italic S (Safaricom symbol) */}
+                              <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-md relative overflow-hidden border border-[#2e7d32]/10 mb-2">
+                                <span className="text-4xl font-black text-[#d32f2f] italic tracking-tighter">S</span>
+                                <div className="absolute bottom-0 inset-x-0 h-4 bg-[#4caf50]/20 transform -skew-y-12"></div>
+                              </div>
+                              
+                              {/* White sub-band for Safaricom | m-pesa logos inside the image area */}
+                              <div className="absolute bottom-0 inset-x-0 bg-white h-10 px-3 flex items-center justify-between border-t border-gray-100">
+                                <div className="flex items-center gap-1.5">
+                                  <div className="w-3.5 h-3.5 rounded-full bg-[#1b5e20] flex items-center justify-center font-black text-white text-[9px] italic">
+                                    S
+                                  </div>
+                                  <span className="text-[11px] font-black text-[#1b5e20] tracking-tight">Safaricom</span>
+                                </div>
+                                <div className="flex items-center bg-[#4caf50] px-1.5 py-0.5 rounded text-[8px] font-black text-white uppercase tracking-wider h-4 leading-none">
+                                  m-pesa
+                                </div>
+                              </div>
                             </div>
-                            <div className="absolute bottom-2.5 right-2.5 w-8 h-8 rounded-full bg-white hover:bg-gray-100 flex items-center justify-center shadow-md cursor-pointer transition">
-                              <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                              </svg>
+                            
+                            {/* Bottom Card text body */}
+                            <div className="px-3.5 py-2.5 bg-[#e8f5e9] flex flex-col justify-center border-t border-[#c8e6c9]/40">
+                              <p className="text-[12px] font-extrabold text-gray-800 tracking-tight leading-none mb-0.5">Fintech App</p>
+                              <p className="text-[10px] text-[#2e7d32] font-semibold">saf.cx</p>
                             </div>
+                          </div>
+
+                          {/* Share button on the right of the card */}
+                          <div className="ml-2 w-8 h-8 rounded-full border border-gray-200 bg-white hover:bg-gray-50 flex items-center justify-center shadow-sm cursor-pointer shrink-0 transition select-none">
+                            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 10.742l5.028-2.514m0 0a3 3 0 10-4.321-4.243 3 3 0 004.321 4.243zm-5.028 2.514a3 3 0 11-4.243 4.243 3 3 0 014.243-4.243zm5.028 2.514l-5.028-2.514M18 16a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
                           </div>
                         </div>
                       )}
