@@ -583,28 +583,27 @@ export default function MessagesPage() {
                     </div>
 
                     {/* Chat Content layout (includes Safaricom card attachments if MPESA) */}
-                    <div className="flex flex-col items-start gap-1 w-full">
-                      {/* Text Bubble container */}
-                      <div className="flex items-end gap-2 justify-start max-w-[90%]">
-                        <div className="bg-[#f1f3f4] text-[#1f1f1f] text-[13.5px] font-normal rounded-2xl rounded-bl-sm px-4 py-3 relative leading-relaxed select-text font-sans border border-gray-100/20 shadow-sm">
+                    <div className="flex items-center gap-2 justify-start max-w-[85%] my-1.5 w-full relative">
+                      {/* Main Message Bubble */}
+                      <div className="bg-[#f1f3f4] text-[#1f1f1f] rounded-[1.25rem] overflow-hidden flex flex-col w-full border border-gray-200/40 shadow-sm">
+                        {/* 1. Message text */}
+                        <div className="px-4 py-3 text-[13.5px] leading-relaxed select-text font-sans">
                           {m.body}
                         </div>
-                      </div>
 
-                      {activeThread.title === "MPESA" && (
-                        /* Unified Safaricom / M-Pesa Link Preview Card */
-                        <div className="flex items-center self-start max-w-[90%] my-1.5 font-sans relative">
-                          <div className="w-full max-w-[280px] bg-[#e8f5e9] border border-gray-200 rounded-[1.25rem] overflow-hidden shadow-sm flex flex-col select-none">
-                            {/* Top Image Area */}
-                            <div className="bg-[#1b5e20] p-4 flex flex-col items-center justify-center relative h-36">
+                        {activeThread.title === "MPESA" && (
+                          /* 2. Embedded Safaricom Link Preview Card (Matches bubble width exactly) */
+                          <div className="w-full flex flex-col select-none border-t border-gray-200/30">
+                            {/* Banner Image Area */}
+                            <div className="bg-[#1b5e20] p-4 flex flex-col items-center justify-center relative h-40 w-full">
                               {/* Large red arc with white italic S (Safaricom symbol) */}
                               <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-md relative overflow-hidden border border-[#2e7d32]/10 mb-2">
                                 <span className="text-4xl font-black text-[#d32f2f] italic tracking-tighter">S</span>
                                 <div className="absolute bottom-0 inset-x-0 h-4 bg-[#4caf50]/20 transform -skew-y-12"></div>
                               </div>
                               
-                              {/* White sub-band for Safaricom | m-pesa logos inside the image area */}
-                              <div className="absolute bottom-0 inset-x-0 bg-white h-10 px-3 flex items-center justify-between border-t border-gray-100">
+                              {/* White logo sub-band inside the image area */}
+                              <div className="absolute bottom-0 inset-x-0 bg-white h-10 px-3.5 flex items-center justify-between border-t border-gray-100">
                                 <div className="flex items-center gap-1.5">
                                   <div className="w-3.5 h-3.5 rounded-full bg-[#1b5e20] flex items-center justify-center font-black text-white text-[9px] italic">
                                     S
@@ -618,18 +617,28 @@ export default function MessagesPage() {
                             </div>
                             
                             {/* Bottom Card text body */}
-                            <div className="px-3.5 py-2.5 bg-[#e8f5e9] flex flex-col justify-center border-t border-[#c8e6c9]/40">
-                              <p className="text-[12px] font-extrabold text-gray-800 tracking-tight leading-none mb-0.5">Fintech App</p>
-                              <p className="text-[10px] text-[#2e7d32] font-semibold">saf.cx</p>
+                            <div className="px-4 py-2.5 bg-[#e8f5e9] flex items-center justify-between border-t border-[#c8e6c9]/40 relative">
+                              <div>
+                                <p className="text-[12px] font-extrabold text-gray-800 tracking-tight leading-none mb-0.5">Fintech App</p>
+                                <p className="text-[10px] text-[#2e7d32] font-semibold">saf.cx</p>
+                              </div>
+                              {/* Centered download arrow button */}
+                              <div className="w-8 h-8 rounded-full bg-white hover:bg-gray-100 flex items-center justify-center shadow-md cursor-pointer transition shrink-0 border border-gray-100">
+                                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                                </svg>
+                              </div>
                             </div>
                           </div>
+                        )}
+                      </div>
 
-                          {/* Share button on the right of the card */}
-                          <div className="ml-2 w-8 h-8 rounded-full border border-gray-200 bg-white hover:bg-gray-50 flex items-center justify-center shadow-sm cursor-pointer shrink-0 transition select-none">
-                            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 10.742l5.028-2.514m0 0a3 3 0 10-4.321-4.243 3 3 0 004.321 4.243zm-5.028 2.514a3 3 0 11-4.243 4.243 3 3 0 014.243-4.243zm5.028 2.514l-5.028-2.514M18 16a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                          </div>
+                      {activeThread.title === "MPESA" && (
+                        /* Share button outside on the right of the bubble */
+                        <div className="w-8 h-8 rounded-full border border-gray-200 bg-white hover:bg-gray-50 flex items-center justify-center shadow-sm cursor-pointer shrink-0 transition select-none absolute right-[-40px] top-[40%]">
+                          <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 10.742l5.028-2.514m0 0a3 3 0 10-4.321-4.243 3 3 0 004.321 4.243zm-5.028 2.514a3 3 0 11-4.243 4.243 3 3 0 014.243-4.243zm5.028 2.514l-5.028-2.514M18 16a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
                         </div>
                       )}
                     </div>
