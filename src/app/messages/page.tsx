@@ -63,6 +63,35 @@ function formatThreadTime(isoString: string): string {
   return `${day}/${month}/${year}`;
 }
 
+function formatBubbleDate(isoString: string): string {
+  const date = new Date(isoString);
+  const now = new Date();
+  
+  const diffTime = Math.abs(now.getTime() - date.getTime());
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  
+  let hours = date.getHours();
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  const ampm = hours >= 12 ? "pm" : "am";
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  const timeStr = `${hours}:${minutes} ${ampm}`;
+  
+  if (diffDays === 0) {
+    return `Today • ${timeStr}`;
+  } else if (diffDays === 1) {
+    return `Yesterday • ${timeStr}`;
+  } else if (diffDays < 7) {
+    const weekday = date.toLocaleDateString("en-US", { weekday: "long" });
+    return `${weekday} • ${timeStr}`;
+  } else {
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year} • ${timeStr}`;
+  }
+}
+
 export default function MessagesPage() {
   const router = useRouter();
   const { status: sessionStatus } = useSession();
@@ -506,7 +535,7 @@ export default function MessagesPage() {
 
         {/* VIEW 2: CHAT CONVERSATION THREAD */}
         {activeThread && (
-          <div className="flex-grow flex flex-col h-full bg-[#f8fafd] w-full relative">
+          <div className="flex-grow flex flex-col h-full bg-white w-full relative">
             
             {/* Thread Header */}
             <header className="h-14 bg-white border-b border-gray-200 flex items-center px-3 justify-between shadow-sm sticky top-0 z-10">
@@ -545,19 +574,60 @@ export default function MessagesPage() {
             <div className="flex-grow overflow-y-auto p-4 space-y-4 flex flex-col justify-end">
               <div className="space-y-4">
                 {activeThread.messages.map((m) => (
-                  <div key={m.id} className="flex flex-col gap-1.5">
+                  <div key={m.id} className="flex flex-col gap-2">
                     {/* Timestamp bubble */}
-                    <div className="text-center my-1.5">
-                      <span className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">
-                        {new Date(m.createdAt).toLocaleDateString()} at {new Date(m.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+                    <div className="text-center my-1.5 select-none">
+                      <span className="text-[11px] text-gray-500 font-medium lowercase">
+                        {formatBubbleDate(m.createdAt)}
                       </span>
                     </div>
 
-                    {/* Chat Bubble container */}
-                    <div className="flex items-end gap-2 justify-start max-w-[85%]">
-                      <div className="bg-[#e9eef6] text-[#1f1f1f] text-[13px] rounded-3xl rounded-bl-sm px-4 py-3 relative leading-relaxed select-text font-sans">
-                        {m.body}
+                    {/* Chat Content layout (includes Safaricom card attachments if MPESA) */}
+                    <div className="flex flex-col items-start gap-1">
+                      {activeThread.title === "MPESA" && (
+                        /* Top Safaricom / M-pesa Header Card */
+                        <div className="w-full max-w-[320px] bg-[#e8f5e9] border border-[#a5d6a7]/30 rounded-[1.25rem] overflow-hidden shadow-sm flex flex-col my-0.5 select-none font-sans">
+                          <div className="bg-white p-2.5 flex items-center justify-between border-b border-[#e8f5e9] h-10">
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-4 h-4 rounded-full bg-[#1b5e20] flex items-center justify-center font-black text-white text-[9px] italic">
+                                S
+                              </div>
+                              <span className="text-[11px] font-black text-[#1b5e20] tracking-tight">Safaricom</span>
+                            </div>
+                            <div className="flex items-center bg-[#4caf50] px-1.5 py-0.5 rounded text-[8px] font-black text-white uppercase tracking-wider h-4 leading-none">
+                              m-pesa
+                            </div>
+                          </div>
+                          <div className="px-3 py-2 bg-[#e8f5e9] flex flex-col justify-center">
+                            <p className="text-[12px] font-extrabold text-gray-800 tracking-tight leading-none mb-0.5">Fintech App</p>
+                            <p className="text-[10px] text-[#2e7d32] font-bold">saf.cx</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Text Bubble container */}
+                      <div className="flex items-end gap-2 justify-start max-w-[90%]">
+                        <div className="bg-[#f1f3f4] text-[#1f1f1f] text-[13.5px] font-normal rounded-2xl rounded-bl-sm px-4 py-3 relative leading-relaxed select-text font-sans border border-gray-100/20">
+                          {m.body}
+                        </div>
                       </div>
+
+                      {activeThread.title === "MPESA" && (
+                        /* Bottom Safaricom "S" Logo card */
+                        <div className="w-full max-w-[320px] bg-white border border-gray-200/50 rounded-[1.25rem] overflow-hidden shadow-sm flex flex-col my-0.5 select-none relative group font-sans">
+                          <div className="h-32 bg-[#1b5e20] flex items-center justify-center relative">
+                            <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-md relative overflow-hidden border border-[#2e7d32]/10">
+                              <span className="text-4xl font-black text-[#d32f2f] italic tracking-tighter">S</span>
+                              <div className="absolute bottom-0 inset-x-0 h-4 bg-[#4caf50]/20 transform -skew-y-12"></div>
+                            </div>
+                            <div className="absolute bottom-2.5 right-2.5 w-8 h-8 rounded-full bg-white hover:bg-gray-100 flex items-center justify-center shadow-md cursor-pointer transition">
+                              <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                              </svg>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
