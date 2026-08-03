@@ -425,10 +425,10 @@ export default function MessagesPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#f8fafd] text-[#1f1f1f] flex flex-col font-sans selection:bg-[#3B82F6]/20">
+    <div className="h-screen overflow-hidden bg-[#f8fafd] text-[#1f1f1f] flex flex-col font-sans selection:bg-[#3B82F6]/20">
       
       {/* Messages App Shell (simulates desktop mobile wrapper, behaves responsive) */}
-      <div className="flex-grow flex max-w-[500px] w-full mx-auto bg-white shadow-lg overflow-hidden relative min-h-screen flex-col border-x border-gray-200">
+      <div className="h-full max-w-[500px] w-full mx-auto bg-white shadow-lg overflow-hidden relative flex flex-col border-x border-gray-200">
         
         {/* VIEW 1: THREAD LIST (Shows if no active thread is open) */}
         <div className={`flex-grow flex flex-col relative h-full w-full ${activeThreadId ? "hidden" : "flex"}`}>
