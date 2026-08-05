@@ -71,9 +71,11 @@ model PriceFeed {
 }
 
 model MarketSetting {
-  id           String   @id @default("default")
-  manipulation String   @default("normal") // "normal" | "force_win" | "force_loss"
-  updatedAt    DateTime @updatedAt
+  id            String   @id @default("default")
+  manipulation  String   @default("normal") // "normal" | "force_win" | "force_loss"
+  minDeposit    Float    @default(5.0)
+  minWithdrawal Float    @default(100.0)
+  updatedAt     DateTime @updatedAt
 }
 
 model Message {

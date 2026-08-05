@@ -12,9 +12,23 @@ import {
 
 const schema = z.object({
   method: z.enum(["mpesa", "crypto", "card"]),
-  amount: z.number().min(5).max(10000),
+  amount: z.number().min(0.01).max(1000000),
   phone: z.string().optional(),
 });
+
+export async function GET() {
+  try {
+    const setting = await prisma.marketSetting.findUnique({
+      where: { id: "default" },
+    });
+    return NextResponse.json({
+      minDeposit: setting?.minDeposit ?? 5.0,
+    });
+  } catch (error) {
+    console.error("Failed to fetch deposit settings:", error);
+    return NextResponse.json({ minDeposit: 5.0 });
+  }
+}
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -35,6 +49,19 @@ export async function POST(req: Request) {
     }
 
     const { method, amount, phone } = parsed.data;
+
+    const setting = await prisma.marketSetting.findUnique({
+      where: { id: "default" },
+    });
+    const minDeposit = setting?.minDeposit ?? 5.0;
+
+    if (amount < minDeposit) {
+      return NextResponse.json(
+        { error: `Minimum deposit is $${minDeposit}` },
+        { status: 400 }
+      );
+    }
+
     const reference = generateDepositReference();
 
     if (method === "mpesa") {

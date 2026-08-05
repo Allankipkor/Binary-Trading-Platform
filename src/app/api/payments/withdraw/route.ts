@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 
 const schema = z.object({
   method: z.enum(["mpesa", "crypto"]),
-  amount: z.number().min(50).max(150000),
+  amount: z.number().min(0.01).max(1000000),
   phone: z.string().optional(),
   walletAddress: z.string().optional(),
 });
@@ -25,10 +25,16 @@ export async function GET() {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
+  const setting = await prisma.marketSetting.findUnique({
+    where: { id: "default" },
+  });
+  const minWithdrawal = setting?.minWithdrawal ?? 100.0;
+
   return NextResponse.json({
     balance: user.balance,
     phone: user.phone,
     kycStatus: "not_submitted" as const,
+    minWithdrawal,
   });
 }
 
@@ -72,6 +78,17 @@ export async function POST(req: Request) {
     }
 
     const { method, amount, phone, walletAddress } = parsed.data;
+
+    const setting = await prisma.marketSetting.findUnique({
+      where: { id: "default" },
+    });
+    const minWithdrawal = setting?.minWithdrawal ?? 100.0;
+
+    if (amount < minWithdrawal) {
+      return NextResponse.json({
+        error: `Minimum withdrawal is $${minWithdrawal.toFixed(2)}`,
+      }, { status: 400 });
+    }
 
     const user = await prisma.user.findUnique({ where: { id: session.user.id } });
     if (!user || user.balance < amount) {

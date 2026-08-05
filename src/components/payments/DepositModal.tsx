@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Smartphone, Bitcoin, CreditCard, Copy, Check } from "lucide-react";
 import {
   PayPalScriptProvider,
@@ -43,7 +43,19 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
   const [cryptoResult, setCryptoResult] = useState<CryptoResult | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const MIN_DEPOSIT = 5;
+  const [minDeposit, setMinDeposit] = useState(5);
+
+  useEffect(() => {
+    if (!open) return;
+    fetch("/api/payments/deposit")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.minDeposit !== undefined) {
+          setMinDeposit(data.minDeposit);
+        }
+      })
+      .catch((e) => console.error("Failed to load deposit limit", e));
+  }, [open]);
 
   if (!open) return null;
 
@@ -238,11 +250,11 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
         <div className="p-4 sm:p-5 space-y-4 overflow-y-auto overscroll-contain flex-1">
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1.5">
-              Amount (USD) <span className="text-gray-600">· min ${MIN_DEPOSIT}</span>
+              Amount (USD) <span className="text-gray-600">· min ${minDeposit}</span>
             </label>
             <input
               type="number"
-              min={MIN_DEPOSIT}
+              min={minDeposit}
               max={10000}
               value={amount}
               onChange={(e) => setAmount(Number(e.target.value))}
@@ -355,7 +367,7 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
           {!cryptoResult && tab !== "card" && (
             <button
               onClick={handleDeposit}
-              disabled={loading || amount < MIN_DEPOSIT}
+              disabled={loading || amount < minDeposit}
               className="w-full py-3 rounded-xl text-white font-semibold text-sm disabled:opacity-40"
               style={{ background: "#3B82F6" }}
             >

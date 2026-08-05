@@ -57,6 +57,30 @@ export default function AdminPage() {
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [updatingMode, setUpdatingMode] = useState<string | null>(null);
 
+  // Limits settings state
+  const [, setMinDeposit] = useState<number>(5);
+  const [, setMinWithdrawal] = useState<number>(100);
+  const [inputMinDeposit, setInputMinDeposit] = useState<string>("5");
+  const [inputMinWithdrawal, setInputMinWithdrawal] = useState<string>("100");
+  const [updatingLimits, setUpdatingLimits] = useState(false);
+  const [limitsSuccess, setLimitsSuccess] = useState(false);
+  const [limitsError, setLimitsError] = useState("");
+
+  // Deposits log state
+  interface AdminDeposit {
+    id: string;
+    amount: number;
+    method: string;
+    status: string;
+    createdAt: string;
+    user: {
+      email: string;
+      name: string | null;
+    };
+  }
+  const [deposits, setDeposits] = useState<AdminDeposit[]>([]);
+  const [loadingDeposits, setLoadingDeposits] = useState(true);
+
   // Suppress warning by printing setting load status if needed in console
   useEffect(() => {
     if (!loadingSettings) {
@@ -74,7 +98,7 @@ export default function AdminPage() {
   const [submittingUserEdit, setSubmittingUserEdit] = useState(false);
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<"trades" | "users">("trades");
+  const [activeTab, setActiveTab] = useState<"trades" | "users" | "deposits">("trades");
 
   // Auth checking
   const isAuthenticated = !!session?.user;
@@ -90,6 +114,7 @@ export default function AdminPage() {
     fetchSettings();
     fetchTrades();
     fetchUsers();
+    fetchDeposits();
 
     // Set up polling for trades
     const interval = setInterval(() => {
@@ -105,6 +130,10 @@ export default function AdminPage() {
       if (res.ok) {
         const data = await res.json();
         setManipulation(data.manipulation);
+        setMinDeposit(data.minDeposit ?? 5.0);
+        setMinWithdrawal(data.minWithdrawal ?? 100.0);
+        setInputMinDeposit((data.minDeposit ?? 5.0).toString());
+        setInputMinWithdrawal((data.minWithdrawal ?? 100.0).toString());
       }
     } catch (e) {
       console.error(e);
@@ -138,6 +167,53 @@ export default function AdminPage() {
       console.error(e);
     } finally {
       setLoadingUsers(false);
+    }
+  };
+
+  const fetchDeposits = async () => {
+    try {
+      const res = await fetch("/api/admin/deposits");
+      if (res.ok) {
+        const data = await res.json();
+        setDeposits(data.deposits || []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingDeposits(false);
+    }
+  };
+
+  const handleUpdateLimits = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUpdatingLimits(true);
+    setLimitsError("");
+    setLimitsSuccess(false);
+
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          minDeposit: parseFloat(inputMinDeposit),
+          minWithdrawal: parseFloat(inputMinWithdrawal),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update limits");
+      }
+
+      setMinDeposit(data.minDeposit);
+      setMinWithdrawal(data.minWithdrawal);
+      setLimitsSuccess(true);
+      setTimeout(() => setLimitsSuccess(false), 3000);
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : "An error occurred";
+      setLimitsError(errMsg);
+    } finally {
+      setUpdatingLimits(false);
     }
   };
 
@@ -444,6 +520,76 @@ export default function AdminPage() {
           </div>
         </section>
 
+        {/* FINANCIAL LIMITS CONFIGURATION */}
+        <section className="bg-[#0d0f17] border border-white/[0.07] rounded-3xl p-5 sm:p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <Settings2 className="w-4 h-4 text-blue-400" />
+            <h2 className="text-sm font-bold uppercase tracking-wider text-white">Financial Limits Configuration</h2>
+          </div>
+          <p className="text-xs text-gray-400 leading-relaxed max-w-2xl">
+            Configure the minimum amounts required for user deposits and withdrawals. Changes apply immediately to all clients.
+          </p>
+
+          <form onSubmit={handleUpdateLimits} className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end pt-2">
+            <div>
+              <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block mb-1.5">
+                Minimum Deposit (USD)
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={inputMinDeposit}
+                  onChange={(e) => setInputMinDeposit(e.target.value)}
+                  className="w-full bg-[#13161e] border border-white/[0.07] rounded-xl pl-7 pr-3 py-2.5 text-xs text-white outline-none focus:border-blue-500/50"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block mb-1.5">
+                Minimum Withdrawal (USD)
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={inputMinWithdrawal}
+                  onChange={(e) => setInputMinWithdrawal(e.target.value)}
+                  className="w-full bg-[#13161e] border border-white/[0.07] rounded-xl pl-7 pr-3 py-2.5 text-xs text-white outline-none focus:border-blue-500/50"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <button
+                type="submit"
+                disabled={updatingLimits}
+                className="w-full h-10 rounded-xl bg-[#3B82F6] hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold transition flex items-center justify-center gap-1.5"
+              >
+                {updatingLimits && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Save Financial Limits
+              </button>
+            </div>
+          </form>
+
+          {limitsError && (
+            <p className="text-[11px] text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg px-3 py-2 max-w-sm">
+              {limitsError}
+            </p>
+          )}
+
+          {limitsSuccess && (
+            <p className="text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2 max-w-sm">
+              Limits updated successfully!
+            </p>
+          )}
+        </section>
+
         {/* DETAILS SECTION WITH TAB SELECTOR */}
         <section className="bg-[#0d0f17] border border-white/[0.07] rounded-3xl overflow-hidden flex flex-col">
           
@@ -468,6 +614,16 @@ export default function AdminPage() {
               }`}
             >
               Account Database ({users.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("deposits")}
+              className={`flex-1 py-4 text-xs font-bold uppercase tracking-wider border-b-2 transition ${
+                activeTab === "deposits"
+                  ? "border-[#3B82F6] text-white"
+                  : "border-transparent text-gray-500 hover:text-gray-400"
+              }`}
+            >
+              Deposits Log ({deposits.length})
             </button>
           </div>
 
@@ -659,6 +815,66 @@ export default function AdminPage() {
                               >
                                 Adjust Balance
                               </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* DEPOSITS TAB */}
+            {activeTab === "deposits" && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Historical records of all deposits</span>
+                </div>
+
+                {loadingDeposits && deposits.length === 0 ? (
+                  <div className="py-12 flex flex-col items-center justify-center">
+                    <Loader2 className="w-6 h-6 text-gray-600 animate-spin mb-2" />
+                    <p className="text-xs text-gray-500">Querying deposits...</p>
+                  </div>
+                ) : deposits.length === 0 ? (
+                  <div className="py-12 text-center text-gray-500 text-xs">
+                    No deposits found in the database.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b border-white/[0.05] text-gray-500 font-bold">
+                          <th className="pb-3 pr-2">User / Account</th>
+                          <th className="pb-3 px-2">Method</th>
+                          <th className="pb-3 px-2 text-right">Amount (USD)</th>
+                          <th className="pb-3 px-2">Status</th>
+                          <th className="pb-3 pl-2 text-right">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {deposits.map((d) => (
+                          <tr key={d.id} className="border-b border-white/[0.04] hover:bg-white/[0.01]">
+                            <td className="py-3 pr-2 font-medium max-w-[150px] truncate" title={d.user.email}>
+                              <span className="block text-white truncate">{d.user.name || "Trader"}</span>
+                              <span className="text-[10px] text-gray-500 truncate block">{d.user.email}</span>
+                            </td>
+                            <td className="py-3 px-2 text-gray-400 capitalize">{d.method}</td>
+                            <td className="py-3 px-2 text-right font-medium text-emerald-400 tabular-nums">${d.amount.toFixed(2)}</td>
+                            <td className="py-3 px-2">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                                d.status === "completed"
+                                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                  : d.status === "failed"
+                                  ? "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                                  : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                              }`}>
+                                {d.status}
+                              </span>
+                            </td>
+                            <td className="py-3 pl-2 text-right text-gray-500">
+                              {new Date(d.createdAt).toLocaleString()}
                             </td>
                           </tr>
                         ))}

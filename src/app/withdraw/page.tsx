@@ -46,7 +46,7 @@ export default function WithdrawPage() {
     }, 4000);
   };
 
-  const MIN = 100;
+  const [minWithdrawal, setMinWithdrawal] = useState(100);
   const MAX = 150000;
 
   useEffect(() => {
@@ -55,6 +55,7 @@ export default function WithdrawPage() {
       .then((data) => {
         setBalance(data.balance ?? 0);
         if (data.phone) setPhone(data.phone);
+        if (data.minWithdrawal !== undefined) setMinWithdrawal(data.minWithdrawal);
       })
       .catch(() => setBalance(0));
 
@@ -75,8 +76,8 @@ export default function WithdrawPage() {
     setError("");
     const amt = parseFloat(amount);
 
-    if (!amt || amt < MIN) {
-      const msg = `Minimum withdrawal is $${MIN.toFixed(2)}`;
+    if (!amt || amt < minWithdrawal) {
+      const msg = `Minimum withdrawal is $${minWithdrawal.toFixed(2)}`;
       setError(msg);
       pushToast("error", msg);
       return;
@@ -313,7 +314,7 @@ export default function WithdrawPage() {
               />
             </div>
             <div className="flex justify-between mt-1.5 text-[11px] text-gray-500">
-              <span>Min: ${MIN.toFixed(2)}</span>
+              <span>Min: ${minWithdrawal.toFixed(2)}</span>
               <span>Max: ${MAX.toFixed(2)}</span>
             </div>
           </div>
