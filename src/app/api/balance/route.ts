@@ -17,5 +17,10 @@ export async function GET() {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ balance: user.balance });
+  const setting = await prisma.marketSetting.findUnique({
+    where: { id: "default" },
+  });
+  const minStake = setting?.minStake ?? 5.0;
+
+  return NextResponse.json({ balance: user.balance, minStake });
 }

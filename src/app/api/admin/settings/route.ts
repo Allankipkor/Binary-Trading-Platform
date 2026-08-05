@@ -16,6 +16,7 @@ export async function GET() {
       manipulation: setting?.manipulation ?? "normal",
       minDeposit: setting?.minDeposit ?? 5.0,
       minWithdrawal: setting?.minWithdrawal ?? 100.0,
+      minStake: setting?.minStake ?? 5.0,
     });
   } catch (error) {
     console.error("Failed to fetch admin settings:", error);
@@ -31,9 +32,9 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { manipulation, minDeposit, minWithdrawal } = body;
+    const { manipulation, minDeposit, minWithdrawal, minStake } = body;
 
-    const dataToUpdate: { manipulation?: string; minDeposit?: number; minWithdrawal?: number } = {};
+    const dataToUpdate: { manipulation?: string; minDeposit?: number; minWithdrawal?: number; minStake?: number } = {};
 
     if (manipulation !== undefined) {
       if (!["normal", "force_win", "force_loss"].includes(manipulation)) {
@@ -58,6 +59,14 @@ export async function POST(req: Request) {
       dataToUpdate.minWithdrawal = parsedWithdrawal;
     }
 
+    if (minStake !== undefined) {
+      const parsedStake = parseFloat(minStake);
+      if (isNaN(parsedStake) || parsedStake < 0.01) {
+        return NextResponse.json({ error: "Invalid minimum stake value" }, { status: 400 });
+      }
+      dataToUpdate.minStake = parsedStake;
+    }
+
     const setting = await prisma.marketSetting.upsert({
       where: { id: "default" },
       create: { 
@@ -65,6 +74,7 @@ export async function POST(req: Request) {
         manipulation: manipulation ?? "normal",
         minDeposit: minDeposit !== undefined ? parseFloat(minDeposit) : 5.0,
         minWithdrawal: minWithdrawal !== undefined ? parseFloat(minWithdrawal) : 100.0,
+        minStake: minStake !== undefined ? parseFloat(minStake) : 5.0,
       },
       update: dataToUpdate,
     });
@@ -81,6 +91,7 @@ export async function POST(req: Request) {
       manipulation: setting.manipulation,
       minDeposit: setting.minDeposit,
       minWithdrawal: setting.minWithdrawal,
+      minStake: setting.minStake,
     });
   } catch (error) {
     console.error("Failed to update admin settings:", error);

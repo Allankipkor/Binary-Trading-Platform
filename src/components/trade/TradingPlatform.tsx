@@ -73,6 +73,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
   const [selectedAsset, setSelectedAsset] = useState<Asset>(ASSETS[0]);
   const [contractType, setContractType] = useState<ContractType>("Match/Differ");
   const [stake, setStake] = useState(10);
+  const [minStake, setMinStake] = useState(5.0);
   const [balance, setBalance] = useState(0);
   const [positions, setPositions] = useState<Position[]>([]);
   const [tradeError, setTradeError] = useState("");
@@ -211,7 +212,10 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
       // stale balance value could overwrite the newer correct one,
       // showing the previous trade's balance instead of the current one.
       // Applying synchronously avoids that entirely.
-      if (balData) setBalance(balData.balance ?? 0);
+      if (balData) {
+        setBalance(balData.balance ?? 0);
+        if (typeof balData.minStake === "number") setMinStake(balData.minStake);
+      }
     } catch {
     } finally {
       syncInFlightRef.current = false;
@@ -511,6 +515,11 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
       return false;
     }
 
+    if (stake < minStake) {
+      setTradeError(`Minimum stake is $${minStake.toFixed(2)}`);
+      return false;
+    }
+
     if (stake > activeBalance) {
       setTradeError("Insufficient balance");
       return false;
@@ -596,6 +605,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
     onPlaceTrade: (direction: "up" | "down", meta?: { digit?: number; contractType?: string; digitDirection?: string }) => placeTrade(direction, meta),
     settledQueue,
     appliedSignal,
+    minStake,
   };
 
   if (sessionStatus === "loading") {
@@ -1284,11 +1294,13 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
             className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] transition"
           >
             <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition ${
-              mobileTab === "ai" ? "bg-[#3B82F6]" : "bg-[#141822]"
+              mobileTab === "ai"
+                ? "bg-gradient-to-tr from-purple-600 via-indigo-600 to-cyan-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]"
+                : "bg-gradient-to-tr from-purple-950/30 to-indigo-950/30 border border-purple-500/10"
             }`}>
-              <Sparkles className="w-5 h-5 text-white" />
+              <Sparkles className={`w-5 h-5 transition ${mobileTab === "ai" ? "text-white scale-110" : "text-purple-400"}`} />
             </div>
-            <span className={`text-[10px] sm:text-xs font-semibold ${mobileTab === "ai" ? "text-[#3B82F6]" : "text-gray-500"}`}>
+            <span className={`text-[10px] sm:text-xs font-semibold ${mobileTab === "ai" ? "text-purple-300 font-bold" : "text-gray-500"}`}>
               AI
             </span>
           </button>

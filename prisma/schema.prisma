@@ -75,6 +75,7 @@ model MarketSetting {
   manipulation  String   @default("normal") // "normal" | "force_win" | "force_loss"
   minDeposit    Float    @default(5.0)
   minWithdrawal Float    @default(100.0)
+  minStake      Float    @default(5.0)
   updatedAt     DateTime @updatedAt
 }
 

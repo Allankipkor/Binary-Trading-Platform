@@ -60,8 +60,10 @@ export default function AdminPage() {
   // Limits settings state
   const [, setMinDeposit] = useState<number>(5);
   const [, setMinWithdrawal] = useState<number>(100);
+  const [, setMinStake] = useState<number>(5);
   const [inputMinDeposit, setInputMinDeposit] = useState<string>("5");
   const [inputMinWithdrawal, setInputMinWithdrawal] = useState<string>("100");
+  const [inputMinStake, setInputMinStake] = useState<string>("5");
   const [updatingLimits, setUpdatingLimits] = useState(false);
   const [limitsSuccess, setLimitsSuccess] = useState(false);
   const [limitsError, setLimitsError] = useState("");
@@ -132,8 +134,10 @@ export default function AdminPage() {
         setManipulation(data.manipulation);
         setMinDeposit(data.minDeposit ?? 5.0);
         setMinWithdrawal(data.minWithdrawal ?? 100.0);
+        setMinStake(data.minStake ?? 5.0);
         setInputMinDeposit((data.minDeposit ?? 5.0).toString());
         setInputMinWithdrawal((data.minWithdrawal ?? 100.0).toString());
+        setInputMinStake((data.minStake ?? 5.0).toString());
       }
     } catch (e) {
       console.error(e);
@@ -197,6 +201,7 @@ export default function AdminPage() {
         body: JSON.stringify({
           minDeposit: parseFloat(inputMinDeposit),
           minWithdrawal: parseFloat(inputMinWithdrawal),
+          minStake: parseFloat(inputMinStake),
         }),
       });
 
@@ -207,6 +212,7 @@ export default function AdminPage() {
 
       setMinDeposit(data.minDeposit);
       setMinWithdrawal(data.minWithdrawal);
+      setMinStake(data.minStake);
       setLimitsSuccess(true);
       setTimeout(() => setLimitsSuccess(false), 3000);
     } catch (err: unknown) {
@@ -530,7 +536,7 @@ export default function AdminPage() {
             Configure the minimum amounts required for user deposits and withdrawals. Changes apply immediately to all clients.
           </p>
 
-          <form onSubmit={handleUpdateLimits} className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end pt-2">
+          <form onSubmit={handleUpdateLimits} className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end pt-2">
             <div>
               <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block mb-1.5">
                 Minimum Deposit (USD)
@@ -559,6 +565,23 @@ export default function AdminPage() {
                   step="0.01"
                   value={inputMinWithdrawal}
                   onChange={(e) => setInputMinWithdrawal(e.target.value)}
+                  className="w-full bg-[#13161e] border border-white/[0.07] rounded-xl pl-7 pr-3 py-2.5 text-xs text-white outline-none focus:border-blue-500/50"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block mb-1.5">
+                Minimum Stake (USD)
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={inputMinStake}
+                  onChange={(e) => setInputMinStake(e.target.value)}
                   className="w-full bg-[#13161e] border border-white/[0.07] rounded-xl pl-7 pr-3 py-2.5 text-xs text-white outline-none focus:border-blue-500/50"
                   required
                 />

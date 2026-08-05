@@ -5,7 +5,6 @@ import { Minus, Plus, Square, Zap, XCircle, CheckCircle2 } from "lucide-react";
 import type { Asset } from "@/lib/assets";
 
 const CONTRACT_TYPES = ["Even/Odd", "Over/Under", "Match/Differ"] as const;
-const STAKE_PRESETS = [1, 5, 10, 25, 50, 100];
 
 type ContractType = (typeof CONTRACT_TYPES)[number];
 
@@ -29,6 +28,7 @@ interface OrderPanelProps {
    *  re-triggers the effect even if the digit value repeats. */
   appliedSignal?: { digit: number; nonce: number } | null;
   compact?: boolean;
+  minStake?: number;
 }
 
 // ── Reusable adjustable number field ──
@@ -121,6 +121,7 @@ export function OrderPanel({
   appliedSignal,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   compact = false,
+  minStake = 5.0,
 }: OrderPanelProps) {
   const [tradeMode, setTradeMode] = useState<"auto" | "manual">("auto");
   const [selectedDigit, setSelectedDigit] = useState(5);
@@ -377,12 +378,12 @@ export function OrderPanel({
   const adjustStake = (delta: number) => {
     // Flat $1 steps — no more jumping 1 -> 5 -> 10 -> 25 via the preset tiers.
     const next = Math.round((stake + delta) * 100) / 100; // avoid float drift
-    onStakeChange(Math.max(1, next));
+    onStakeChange(Math.max(minStake, next));
   };
 
   const commitStake = () => {
     const n = parseFloat(rawStake);
-    if (!isNaN(n) && n >= 1) onStakeChange(Math.round(n * 100) / 100);
+    if (!isNaN(n) && n >= minStake) onStakeChange(Math.round(n * 100) / 100);
     setEditingStake(false);
   };
 
@@ -450,17 +451,20 @@ export function OrderPanel({
           </button>
         </div>
         <div className="flex gap-1.5">
-          {STAKE_PRESETS.map((s) => (
-            <button
-              key={s}
-              onClick={() => onStakeChange(s)}
-              className={`flex-1 py-1 rounded-lg text-[11px] font-bold border transition ${
-                stake === s ? "bg-[#1e3a5f] border-[#3B82F6] text-[#60a5fa]" : "border-white/[0.08] bg-white/[0.03] text-gray-400 hover:bg-white/[0.08]"
-              }`}
-            >
-              ${s}
-            </button>
-          ))}
+          {[minStake, minStake * 2, minStake * 5, minStake * 10, minStake * 20, minStake * 50].map((rawVal) => {
+            const s = Math.round(rawVal);
+            return (
+              <button
+                key={s}
+                onClick={() => onStakeChange(s)}
+                className={`flex-1 py-1 rounded-lg text-[11px] font-bold border transition ${
+                  stake === s ? "bg-[#1e3a5f] border-[#3B82F6] text-[#60a5fa]" : "border-white/[0.08] bg-white/[0.03] text-gray-400 hover:bg-white/[0.08]"
+                }`}
+              >
+                ${s}
+              </button>
+            );
+          })}
         </div>
       </div>
 

@@ -12,7 +12,7 @@ const placeSchema = z.object({
   assetId: z.string(),
   contractType: z.enum(CONTRACT_TYPES),
   direction: z.enum(["up", "down"]),
-  stake: z.number().min(0.1).max(10000),
+  stake: z.number().min(0.01).max(10000),
   durationSeconds: z.number().int().min(1).max(3600).default(1),
   // Optional digit-contract metadata (Even/Odd, Over/Under, Match/Differ)
   digit: z.number().int().min(0).max(9).optional(),
@@ -57,6 +57,15 @@ export async function POST(req: Request) {
     const asset = getAsset(assetId);
     if (!asset) {
       return NextResponse.json({ error: "Invalid asset" }, { status: 400 });
+    }
+
+    const setting = await prisma.marketSetting.findUnique({
+      where: { id: "default" },
+    });
+    const minStake = setting?.minStake ?? 5.0;
+
+    if (stake < minStake) {
+      return NextResponse.json({ error: `Minimum stake is $${minStake.toFixed(2)}` }, { status: 400 });
     }
 
     const user = await prisma.user.findUnique({ where: { id: session.user.id } });
