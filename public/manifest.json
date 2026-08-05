@@ -4,7 +4,7 @@
   "description": "Binary trading platform and message logs",
   "start_url": "/messages",
   "display": "standalone",
-  "background_color": "#0a0c12",
+  "background_color": "#ffffff",
   "theme_color": "#3B82F6",
   "orientation": "portrait",
   "icons": [

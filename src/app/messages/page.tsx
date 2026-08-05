@@ -576,7 +576,7 @@ export default function MessagesPage() {
                   <div key={m.id} className="flex flex-col gap-2">
                     {/* Timestamp bubble */}
                     <div className="text-center my-1.5 select-none">
-                      <span className="text-[11px] text-gray-500 font-medium lowercase">
+                      <span className="text-[11px] text-gray-500 font-medium">
                         {formatBubbleDate(m.createdAt)}
                       </span>
                     </div>
@@ -591,43 +591,15 @@ export default function MessagesPage() {
                         </div>
 
                         {activeThread.title === "MPESA" && (
-                          /* 2. Embedded Safaricom Link Preview Card (Matches bubble width exactly) */
-                          <div className="w-full flex flex-col select-none border-t border-gray-200/30">
-                            {/* Banner Image Area */}
-                            <div className="bg-[#1b5e20] p-4 flex flex-col items-center justify-center relative h-40 w-full">
-                              {/* Large red arc with white italic S (Safaricom symbol) */}
-                              <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-md relative overflow-hidden border border-[#2e7d32]/10 mb-2">
-                                <span className="text-4xl font-black text-[#d32f2f] italic tracking-tighter">S</span>
-                                <div className="absolute bottom-0 inset-x-0 h-4 bg-[#4caf50]/20 transform -skew-y-12"></div>
-                              </div>
-                              
-                              {/* White logo sub-band inside the image area */}
-                              <div className="absolute bottom-0 inset-x-0 bg-white h-10 px-3.5 flex items-center justify-between border-t border-gray-100">
-                                <div className="flex items-center gap-1.5">
-                                  <div className="w-3.5 h-3.5 rounded-full bg-[#1b5e20] flex items-center justify-center font-black text-white text-[9px] italic">
-                                    S
-                                  </div>
-                                  <span className="text-[11px] font-black text-[#1b5e20] tracking-tight">Safaricom</span>
-                                </div>
-                                <div className="flex items-center bg-[#4caf50] px-1.5 py-0.5 rounded text-[8px] font-black text-white uppercase tracking-wider h-4 leading-none">
-                                  m-pesa
-                                </div>
-                              </div>
-                            </div>
-                            
-                            {/* Bottom Card text body */}
-                            <div className="px-4 py-2.5 bg-[#e8f5e9] flex items-center justify-between border-t border-[#c8e6c9]/40 relative">
-                              <div>
-                                <p className="text-[12px] font-extrabold text-gray-800 tracking-tight leading-none mb-0.5">Fintech App</p>
-                                <p className="text-[10px] text-[#2e7d32] font-semibold">saf.cx</p>
-                              </div>
-                              {/* Centered download arrow button */}
-                              <div className="w-8 h-8 rounded-full bg-white hover:bg-gray-100 flex items-center justify-center shadow-md cursor-pointer transition shrink-0 border border-gray-100">
-                                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                                </svg>
-                              </div>
-                            </div>
+                          /* 'Tap to view' attachment download handler */
+                          <div 
+                            onClick={handleDownloadBackup}
+                            className="w-full flex items-center gap-2.5 px-4 py-2.5 bg-[#e8f0fe] hover:bg-[#d2e3fc] border-t border-[#d2e3fc]/60 select-none cursor-pointer transition"
+                          >
+                            <svg className="w-4 h-4 text-[#1a73e8]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                            </svg>
+                            <span className="text-[12px] font-semibold text-[#1a73e8]">Tap to view</span>
                           </div>
                         )}
                       </div>
