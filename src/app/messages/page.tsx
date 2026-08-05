@@ -482,7 +482,7 @@ export default function MessagesPage() {
           )}
 
           {/* Threads list container */}
-          <div className="flex-grow overflow-y-auto divide-y divide-transparent px-1 pb-24">
+          <div className="flex-grow overflow-y-auto scroll-smooth divide-y divide-transparent px-1 pb-24">
             {filteredThreads.map((t) => {
               const latestMessage = t.messages[t.messages.length - 1];
               return (
@@ -570,7 +570,7 @@ export default function MessagesPage() {
             </header>
 
             {/* Bubble list thread */}
-            <div className="flex-grow overflow-y-auto pt-14 pb-4 px-4 relative">
+            <div className="flex-grow overflow-y-auto scroll-smooth pt-14 pb-4 px-4 relative">
               <div className="space-y-4 flex flex-col min-h-full justify-end">
                 {activeThread.messages.map((m) => (
                   <div key={m.id} className="flex flex-col gap-2">
@@ -621,9 +621,6 @@ export default function MessagesPage() {
 
             {/* Locked footer: Sender does not accept replies */}
             <div className="bg-[#f8fafd] px-4 py-4 flex flex-col items-center gap-2 border-t border-gray-200 shadow-[0_-2px_6px_rgba(0,0,0,0.01)]">
-              <span className="text-[10px] text-gray-400 font-bold tracking-wider select-none">
-                Sending with <span className="underline decoration-gray-400/50 underline-offset-2">1 SIM1</span>
-              </span>
               <div className="bg-[#e9eef6] text-[#1f1f1f] text-[13px] leading-relaxed rounded-2xl px-5 py-3.5 text-center max-w-[92%] select-none font-medium">
                 Sender can&apos;t accept replies. Contact them directly. <span className="text-[#1a73e8] hover:underline cursor-pointer font-semibold underline decoration-1 underline-offset-2">Learn more</span>
               </div>
