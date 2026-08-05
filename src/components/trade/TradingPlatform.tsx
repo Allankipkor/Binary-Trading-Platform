@@ -1208,21 +1208,59 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
         )}
 
         {mobileTab === "ai" && (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-[#0d0f17] px-6 text-center" style={{ paddingBottom: "calc(72px + env(safe-area-inset-bottom, 0px))" }}>
-            <div className="w-16 h-16 rounded-full bg-[#3B82F6]/10 border border-[#3B82F6]/20 flex items-center justify-center">
-              <Sparkles className="w-8 h-8 text-[#3B82F6]" />
+          <div className="flex-1 flex flex-col items-center justify-center gap-6 bg-gradient-to-b from-[#0a0c12] via-[#0d0f17] to-[#07080d] px-6 text-center" style={{ paddingBottom: "calc(72px + env(safe-area-inset-bottom, 0px))" }}>
+            <div className="relative w-32 h-32 flex items-center justify-center mb-1">
+              {/* Pulsing ring */}
+              <div className="absolute inset-0 rounded-full border border-purple-500/20 animate-pulse scale-110" />
+              {/* Dashed tech grid */}
+              <div className="absolute inset-1.5 rounded-full border border-dashed border-cyan-500/30 animate-[spin_25s_linear_infinite]" />
+              {/* Inner glowing glow mesh */}
+              <div className="absolute inset-4 rounded-full bg-gradient-to-tr from-purple-500/20 via-indigo-500/25 to-cyan-500/20 blur-sm animate-pulse" />
+              {/* Sparkles container */}
+              <div className="relative w-16 h-16 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center shadow-[0_0_25px_rgba(147,51,234,0.4)]">
+                <Sparkles className="w-8 h-8 text-white" />
+              </div>
             </div>
-            <div>
-              <p className="text-white font-semibold text-base mb-1">AI</p>
-              <p className="text-gray-400 text-xs leading-relaxed">
-                Scan live tick patterns to find the statistically strongest entry across markets.
+
+            <div className="space-y-2">
+              <span className="px-2.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-[9px] font-bold text-purple-400 uppercase tracking-widest inline-block mb-1">
+                AI SMART CORE
+              </span>
+              <h2 className="text-lg font-extrabold bg-gradient-to-r from-purple-400 via-indigo-300 to-cyan-400 bg-clip-text text-transparent">
+                Predictive Entry Scanner
+              </h2>
+              <p className="text-gray-400 text-xs leading-relaxed max-w-xs mx-auto">
+                Our deep neural scanner analyzes live tick flows to identify statistically dominant trade entry setups instantly.
               </p>
             </div>
+
+            <div className="w-full max-w-xs space-y-2.5 bg-white/[0.02] border border-white/[0.05] rounded-2xl p-4 text-left">
+              <div className="flex items-center gap-3">
+                <div className="w-5 h-5 rounded-md bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
+                  <span className="text-[10px] text-purple-400 font-bold">1</span>
+                </div>
+                <span className="text-xs text-gray-300">Continuous Live Tick Analysis</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-5 h-5 rounded-md bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
+                  <span className="text-[10px] text-indigo-400 font-bold">2</span>
+                </div>
+                <span className="text-xs text-gray-300">Even/Odd & Over/Under Support</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-5 h-5 rounded-md bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                  <span className="text-[10px] text-cyan-400 font-bold">3</span>
+                </div>
+                <span className="text-xs text-gray-300">Confidence Score Estimation</span>
+              </div>
+            </div>
+
             <button
               onClick={() => setScannerOpen(true)}
-              className="px-5 py-2.5 rounded-xl bg-[#3B82F6] text-white text-sm font-semibold min-h-[44px]"
+              className="w-full max-w-xs h-12 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white text-xs font-bold transition shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:shadow-[0_0_30px_rgba(168,85,247,0.45)] active:scale-98 flex items-center justify-center gap-2"
             >
-              AI
+              <Sparkles className="w-4 h-4 animate-pulse" />
+              Launch Neural Scanner
             </button>
           </div>
         )}
@@ -1467,32 +1505,35 @@ function EntryScannerModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="w-full max-w-sm bg-[#0d0f17] border border-white/10 rounded-3xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07] sticky top-0 bg-[#0d0f17] z-10">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+      <div className="w-full max-w-sm bg-[#0d0f17] border border-white/[0.08] rounded-3xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto relative">
+        {/* Top accent line */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-indigo-500 to-cyan-500" />
+
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07] sticky top-0 bg-[#0d0f17]/95 backdrop-blur-md z-10">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#3B82F6]/15 border border-[#3B82F6]/25 flex items-center justify-center">
-              <Sparkles className="w-4.5 h-4.5 text-[#3B82F6]" />
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-500/20 to-indigo-500/20 border border-purple-500/30 flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.15)]">
+              <Sparkles className="w-4.5 h-4.5 text-purple-400 animate-pulse" />
             </div>
-            <h2 className="text-base font-bold text-white">AI Scanner</h2>
+            <h2 className="text-sm font-extrabold bg-gradient-to-r from-purple-400 via-indigo-300 to-cyan-400 bg-clip-text text-transparent">AI Scanner Panel</h2>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5 text-gray-400">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="px-5 py-4 space-y-4">
+        <div className="px-5 py-5 space-y-5">
           <p className="text-xs text-gray-400 leading-relaxed">
-            Pick the market category you want to scan. The deep scanner walks every asset and surfaces the best entry point based on live tick patterns.
+            Select your preferred market category. Our neural pattern recognition system evaluates live tick flows across all assets to detect key statistical entry triggers.
           </p>
 
           <div>
-            <label className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block mb-1.5">Market</label>
+            <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block mb-1.5">Selected Market</label>
             <select
               value={selectedMarket}
               onChange={(e) => { setSelectedMarket(e.target.value as ScanMarket); setResult(null); }}
               disabled={scanning}
-              className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3.5 py-3 text-sm text-white outline-none focus:border-[#3B82F6]/50 appearance-none disabled:opacity-50"
+              className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3.5 py-3 text-sm text-white outline-none focus:border-purple-500/50 appearance-none disabled:opacity-50"
             >
               <option value="Even/Odd">Even / Odd</option>
               <option value="Over/Under">Over / Under</option>
@@ -1502,52 +1543,70 @@ function EntryScannerModal({
 
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs text-gray-500 truncate pr-2">
-                {scanning ? currentAssetName : result ? result.assetName : "Ready to scan"}
+              <span className="text-xs text-gray-500 truncate pr-2 font-medium">
+                {scanning ? currentAssetName : result ? result.assetName : "Scanner Offline"}
               </span>
-              <span className="text-xs text-gray-400 font-semibold shrink-0">{pass}/{TOTAL_PASSES}</span>
+              <span className="text-xs text-purple-400 font-bold shrink-0">{pass}/{TOTAL_PASSES}</span>
             </div>
-            <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+            <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden p-0.5 border border-white/[0.03]">
               <div
-                className={`h-full transition-all duration-500 ${result ? "bg-emerald-500" : "bg-[#3B82F6]"}`}
+                className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-purple-500 via-indigo-500 to-cyan-500 shadow-[0_0_10px_rgba(168,85,247,0.4)]"
                 style={{ width: `${(pass / TOTAL_PASSES) * 100}%` }}
               />
             </div>
           </div>
 
+          {scanning && (
+            <div className="py-2 flex flex-col items-center justify-center">
+              <div className="relative w-16 h-16 flex items-center justify-center mb-2">
+                <div className="absolute inset-0 rounded-full border border-purple-500/25 animate-ping" />
+                <div className="absolute inset-1.5 rounded-full border border-dashed border-cyan-500/30 animate-spin" />
+                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center shadow-lg">
+                  <Sparkles className="w-5 h-5 text-white animate-pulse" />
+                </div>
+              </div>
+              <p className="text-[9px] font-bold uppercase tracking-widest text-purple-400 animate-pulse">Running Neural Pattern Scan...</p>
+            </div>
+          )}
+
           {result && (
-            <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/25 p-4 space-y-3">
-              <div className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
-                <p className="text-sm text-white leading-snug">
-                  <span className="font-bold">Best market:</span> {result.assetName} | {selectedMarket} {result.direction}
-                  {" "}| <span className="text-emerald-400 font-bold">Quality {result.confidence}%</span>
+            <div className="rounded-2xl bg-gradient-to-b from-[#141822] to-[#0d0f17] border border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.12)] p-4 space-y-3 relative overflow-hidden">
+              {/* Decorative radial overlay */}
+              <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-emerald-500/10 blur-xl" />
+              
+              <div className="flex items-start gap-2 relative z-10">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0 animate-bounce" />
+                <p className="text-xs text-white leading-snug">
+                  <span className="font-bold text-emerald-400 uppercase tracking-wider text-[9px] bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded">Setup Detected</span>
+                  <span className="block mt-1.5 font-semibold text-gray-200">
+                    High probability entry setup found on <span className="text-white font-extrabold">{result.assetName}</span>.
+                  </span>
                 </p>
               </div>
 
-              <div className="space-y-2 pt-1">
-                <div>
-                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide mb-1">Selected Market</p>
-                  <div className="bg-[#141822] rounded-lg px-3 py-2 text-sm text-white font-semibold">{result.assetName}</div>
+              <div className="grid grid-cols-3 gap-2 pt-1 relative z-10">
+                <div className="bg-white/[0.02] border border-white/[0.04] rounded-xl p-2.5">
+                  <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Asset</p>
+                  <p className="text-xs text-white font-bold truncate">{result.assetName.replace(" Volatility", "")}</p>
                 </div>
-                <div>
-                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide mb-1">Trade Type</p>
-                  <div className="bg-[#141822] rounded-lg px-3 py-2 text-sm text-white font-semibold">{selectedMarket}</div>
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide mb-1">Prediction (Auto)</p>
-                  <div className="bg-[#141822] rounded-lg px-3 py-2 text-sm text-white font-semibold">
+                <div className="bg-white/[0.02] border border-white/[0.04] rounded-xl p-2.5">
+                  <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Prediction</p>
+                  <p className="text-xs text-white font-bold capitalize truncate">
                     {result.direction}
-                    {result.digit !== undefined && ` · digit ${result.digit}`}
-                  </div>
+                    {result.digit !== undefined && ` (${result.digit})`}
+                  </p>
+                </div>
+                <div className="bg-white/[0.02] border border-white/[0.04] rounded-xl p-2.5">
+                  <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Confidence</p>
+                  <p className="text-xs text-emerald-400 font-extrabold">{result.confidence}%</p>
                 </div>
               </div>
 
               <button
                 onClick={() => { onUseSignal(selectedMarket, result.direction, result.digit, result.assetId); onClose(); }}
-                className="w-full mt-1 h-10 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-bold transition active:scale-95"
+                className="w-full mt-1 h-10 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white text-xs font-bold transition shadow-[0_0_15px_rgba(16,185,129,0.25)] active:scale-98 relative z-10"
               >
-                Use This Signal
+                Apply AI Signal
               </button>
             </div>
           )}
@@ -1555,17 +1614,17 @@ function EntryScannerModal({
           <button
             onClick={handleScan}
             disabled={scanning}
-            className="w-full h-12 rounded-xl bg-[#3B82F6] hover:bg-blue-500 disabled:opacity-60 text-white text-sm font-bold flex items-center justify-center gap-2 transition"
+            className="w-full h-12 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 disabled:opacity-60 text-white text-xs font-bold flex items-center justify-center gap-2 transition shadow-[0_0_15px_rgba(168,85,247,0.25)] hover:shadow-[0_0_25px_rgba(168,85,247,0.4)] active:scale-98"
           >
             {scanning ? (
               <>
                 <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                Scanning {currentAssetName || "…"}
+                Scanning Neural Tick Feed...
               </>
             ) : (
               <>
                 <Sparkles className="w-4 h-4" />
-                {result ? "Re-scan for Best Market" : "Deep Scan for Best Market"}
+                {result ? "Re-Scan Market Tick Flow" : "Deep Neural Market Scan"}
               </>
             )}
           </button>
