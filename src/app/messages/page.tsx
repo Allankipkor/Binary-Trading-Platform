@@ -591,27 +591,19 @@ export default function MessagesPage() {
                         </div>
 
                         {activeThread.title === "MPESA" && (
-                          /* 'Tap to view' attachment download handler */
+                          /* 'Tap to load preview' attachment preview box matching standard Google Messages */
                           <div 
                             onClick={handleDownloadBackup}
-                            className="w-full flex items-center gap-2.5 px-4 py-2.5 bg-[#e8f0fe] hover:bg-[#d2e3fc] border-t border-[#d2e3fc]/60 select-none cursor-pointer transition"
+                            className="w-full flex flex-col items-center justify-center gap-1.5 py-4 bg-[#f8f9fa] hover:bg-[#f1f3f4] border-t border-gray-200/80 select-none cursor-pointer transition text-center"
                           >
-                            <svg className="w-4 h-4 text-[#1a73e8]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                            <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                              {/* circular reload/refresh icon */}
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
                             </svg>
-                            <span className="text-[12px] font-semibold text-[#1a73e8]">Tap to view</span>
+                            <span className="text-[12.5px] font-semibold text-gray-700">Tap to load preview</span>
                           </div>
                         )}
                       </div>
-
-                      {activeThread.title === "MPESA" && (
-                        /* Share button outside on the right of the bubble */
-                        <div className="w-8 h-8 rounded-full border border-gray-200 bg-white hover:bg-gray-50 flex items-center justify-center shadow-sm cursor-pointer shrink-0 transition select-none absolute right-[-40px] top-[40%]">
-                          <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 10.742l5.028-2.514m0 0a3 3 0 10-4.321-4.243 3 3 0 004.321 4.243zm-5.028 2.514a3 3 0 11-4.243 4.243 3 3 0 014.243-4.243zm5.028 2.514l-5.028-2.514M18 16a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                        </div>
-                      )}
                     </div>
                   </div>
                 ))}

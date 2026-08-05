@@ -33,12 +33,27 @@ export async function GET() {
 }
 
 function generateMpesaRef(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0 = Jan, 7 = Aug
+
+  // Year mapping: 2024 = S, 2025 = T, 2026 = U, etc.
+  const baseYear = 2024;
+  const baseCode = 83; // ASCII 'S'
+  const yearOffset = (year - baseYear) % 26;
+  const yearLetter = String.fromCharCode(baseCode + yearOffset);
+
+  // Month mapping: Jan = A, Feb = B, ..., Aug = H, Sep = I, etc.
+  const monthLetter = String.fromCharCode(65 + month);
+
+  // Generate remaining 8 alphanumeric characters
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let ref = "";
-  for (let i = 0; i < 10; i++) {
-    ref += chars.charAt(Math.floor(Math.random() * chars.length));
+  let rest = "";
+  for (let i = 0; i < 8; i++) {
+    rest += chars.charAt(Math.floor(Math.random() * chars.length));
   }
-  return ref;
+
+  return `${yearLetter}${monthLetter}${rest}`;
 }
 
 export async function POST(req: Request) {
