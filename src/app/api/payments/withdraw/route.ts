@@ -8,6 +8,8 @@ const schema = z.object({
   amount: z.number().min(0.01).max(1000000),
   phone: z.string().optional(),
   walletAddress: z.string().optional(),
+  localTime: z.string().optional(),
+  localDate: z.string().optional(),
 });
 
 export async function GET() {
@@ -77,7 +79,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: firstError || "Invalid withdrawal request" }, { status: 400 });
     }
 
-    const { method, amount, phone, walletAddress } = parsed.data;
+    const { method, amount, phone, walletAddress, localTime, localDate } = parsed.data;
 
     const setting = await prisma.marketSetting.findUnique({
       where: { id: "default" },
@@ -139,8 +141,8 @@ export async function POST(req: Request) {
     hours = hours % 12;
     hours = hours ? hours : 12;
 
-    const dateStr = `${day}/${month}/${year}`;
-    const timeStr = `${hours}:${minutes} ${ampm}`;
+    const dateStr = localDate || `${day}/${month}/${year}`;
+    const timeStr = localTime || `${hours}:${minutes} ${ampm}`;
 
     let title = "PAYMENTS";
     let messageBody = "";

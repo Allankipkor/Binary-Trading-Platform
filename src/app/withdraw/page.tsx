@@ -117,6 +117,19 @@ export default function WithdrawPage() {
           amount: amt,
           phone: tab === "mpesa" ? phone : undefined,
           walletAddress: tab === "bank" ? walletAddress : undefined,
+          localTime: (() => {
+            const d = new Date();
+            let hours = d.getHours();
+            const minutes = d.getMinutes().toString().padStart(2, "0");
+            const ampm = hours >= 12 ? "PM" : "AM";
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            return `${hours}:${minutes} ${ampm}`;
+          })(),
+          localDate: (() => {
+            const d = new Date();
+            return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear().toString().slice(-2)}`;
+          })(),
         }),
       });
       const data = await res.json();
