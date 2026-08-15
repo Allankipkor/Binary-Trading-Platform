@@ -142,13 +142,13 @@ export async function getGateway(id: "mpesa" | "crypto" | "card" | string): Prom
   await ensureGatewayTable();
 
   try {
-    const record = await (prisma as any).paymentGateway.findUnique({
+    const record = await prisma.paymentGateway.findUnique({
       where: { id },
     });
 
     if (!record) {
       // Seed default record in the background
-      const created = await (prisma as any).paymentGateway.create({
+      const created = await prisma.paymentGateway.create({
         data: {
           id,
           name: defaults.name,

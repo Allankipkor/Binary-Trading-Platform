@@ -22,10 +22,7 @@ import {
   EyeOff,
   Save,
   Check,
-  Globe,
-  Key,
   Wallet,
-  Zap,
 } from "lucide-react";
 
 interface AdminTrade {
@@ -298,7 +295,12 @@ export default function AdminPage() {
     }
   };
 
-  const handleGatewayChange = (id: string, field: string, value: any, isConfigField = false) => {
+  const handleGatewayChange = (
+    id: string,
+    field: string,
+    value: string | number | boolean | null,
+    isConfigField = false
+  ) => {
     setGateways((prev) =>
       prev.map((gw) => {
         if (gw.id !== id) return gw;
@@ -1168,7 +1170,7 @@ export default function AdminPage() {
                                     </label>
                                     <select
                                       value={gw.parsedConfig.env || "live"}
-                                      onChange={(e) => handleGatewayChange(gw.id, "env", e.target.value as any, true)}
+                                      onChange={(e) => handleGatewayChange(gw.id, "env", e.target.value as "sandbox" | "live", true)}
                                       className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
                                     >
                                       <option value="live">Live Production (Real money)</option>

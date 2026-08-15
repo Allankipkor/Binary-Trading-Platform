@@ -85,7 +85,7 @@ export async function POST(req: Request) {
       updateData.config = configString;
     }
 
-    await (prisma as any).paymentGateway.upsert({
+    await prisma.paymentGateway.upsert({
       where: { id },
       create: {
         id,
