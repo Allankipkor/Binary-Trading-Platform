@@ -18,7 +18,7 @@ export default function CopyTradingPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("/api/balance")
+    fetch("/api/balance", { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => setBalance(data.balance ?? 0))
       .catch(() => setBalance(0));

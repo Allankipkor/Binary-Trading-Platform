@@ -108,7 +108,7 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
     const interval = setInterval(async () => {
       attempts++;
       try {
-        const res = await fetch(`/api/payments/status/${transactionId}`);
+        const res = await fetch(`/api/payments/status/${transactionId}`, { cache: "no-store" });
         const data = await res.json();
 
         if (data.status === "completed") {

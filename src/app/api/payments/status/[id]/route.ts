@@ -3,6 +3,9 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { checkStkStatus } from "@/lib/mpesa";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -22,50 +25,45 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       where: { id: session.user.id },
       select: { balance: true },
     });
-    return NextResponse.json({
-      status: transaction.status,
-      amount: transaction.amount,
-      balance: user?.balance,
-    });
+    return NextResponse.json(
+      {
+        status: transaction.status,
+        amount: transaction.amount,
+        balance: user?.balance,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        },
+      }
+    );
   }
 
-  // Still pending in our DB — ask Lipia Online directly for the latest status.
-  // Only meaningful for M-Pesa transactions that have a checkoutRequestId saved.
-  if (transaction.method === "mpesa" && transaction.metadata) {
+  // Still pending in DB — query PayHero directly for latest status
+  if (transaction.method === "mpesa") {
     let meta: { checkoutRequestId?: string } = {};
-    try {
-      meta = JSON.parse(transaction.metadata);
-    } catch {
-      // malformed metadata, fall through to returning pending
+    if (transaction.metadata) {
+      try {
+        meta = JSON.parse(transaction.metadata);
+      } catch {
+        // malformed metadata
+      }
     }
 
-    if (meta.checkoutRequestId) {
+    const queryReference = meta.checkoutRequestId || transaction.externalRef || transaction.id;
+
+    if (queryReference) {
       try {
-        const result = await checkStkStatus(meta.checkoutRequestId);
+        const result = await checkStkStatus(queryReference);
+        console.log(`[deposit-status-poll] queryRef=${queryReference} raw=`, JSON.stringify(result));
 
-        // Log the raw response so we can see exactly what Lipia sends for
-        // edge cases — this is what was missing last time something showed
-        // "success" on their dashboard but never resolved here.
-        console.log(`[withdraw-status-poll] checkoutRequestId=${meta.checkoutRequestId} raw=`, JSON.stringify(result));
-
-        // Lipia nests the actual payment fields under data.response (same
-        // shape as their webhook callback), not flat on data like GravityPay was.
         const response = result.data?.response;
 
         if (result.success && response) {
           const remoteStatus = response.Status?.toLowerCase().trim();
+          const successValues = ["success", "successful", "completed", "complete", "paid", "confirmed", "ok"];
+          const failureValues = ["failed", "failure", "cancelled", "canceled", "rejected", "timeout", "expired", "error"];
 
-          const successValues = ["success", "successful", "completed", "complete", "paid", "confirmed"];
-          const failureValues = ["failed", "failure", "cancelled", "canceled", "rejected", "timeout", "expired"];
-
-          // IMPORTANT: do NOT treat ResultCode === 0 alone as success. Daraja
-          // (which Lipia wraps) reuses ResultCode 0 for "STK push accepted
-          // for processing" on the *initiation* response, separately from
-          // "payment actually completed" on the *status/callback* response.
-          // Trusting ResultCode alone here previously caused balances to be
-          // credited the moment the prompt was sent to the phone, before the
-          // user had even entered their PIN. Only the explicit Status string
-          // is trusted now.
           const succeeded = Boolean(remoteStatus && successValues.includes(remoteStatus));
 
           if (succeeded) {
@@ -95,11 +93,18 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
               select: { balance: true },
             });
 
-            return NextResponse.json({
-              status: "completed",
-              amount: transaction.amount,
-              balance: user?.balance,
-            });
+            return NextResponse.json(
+              {
+                status: "completed",
+                amount: transaction.amount,
+                balance: user?.balance,
+              },
+              {
+                headers: {
+                  "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+                },
+              }
+            );
           }
 
           if (remoteStatus && failureValues.includes(remoteStatus)) {
@@ -116,22 +121,28 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
                 }),
               },
             });
-            return NextResponse.json({ status: "failed", amount: transaction.amount });
+            return NextResponse.json(
+              { status: "failed", amount: transaction.amount },
+              {
+                headers: {
+                  "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+                },
+              }
+            );
           }
-
-          // Unrecognized status string — log it loudly so we can add it to
-          // the lists above, but don't guess; just report pending.
-          console.warn(`[withdraw-status-poll] UNRECOGNIZED status "${remoteStatus}" for checkoutRequestId=${meta.checkoutRequestId}`);
-        } else {
-          console.log(`[withdraw-status-poll] success=false or no data for checkoutRequestId=${meta.checkoutRequestId}`, result);
         }
       } catch (err) {
         console.error("checkStkStatus error:", err);
-        // Network/API error talking to Lipia — don't fail the poll request,
-        // just report pending and let the client try again shortly.
       }
     }
   }
 
-  return NextResponse.json({ status: "pending", amount: transaction.amount });
+  return NextResponse.json(
+    { status: "pending", amount: transaction.amount },
+    {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+      },
+    }
+  );
 }

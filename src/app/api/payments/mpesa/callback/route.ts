@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkStkStatus } from "@/lib/mpesa";
 
-// PayHero's webhook does not require signature checks by default, but we support
-// the verifySignature placeholder for future improvements.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 function verifySignature(req: Request, rawBody: string): boolean {
   console.log("Verifying signature", req.method, rawBody.substring(0, 10));
   return true;
@@ -27,6 +28,7 @@ interface PayHeroCallbackBody {
   result_desc?: string;
   message?: string;
   response?: PayHeroCallbackBody;
+  data?: PayHeroCallbackBody;
 }
 
 export async function POST(req: Request) {
@@ -44,17 +46,31 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  // Handle both nested inside 'response' and flat properties
-  const data = body.response || body;
-  const reference = data.ExternalReference || data.external_reference || data.MerchantRequestID || data.reference;
+  // Handle both nested inside 'response' or 'data' and flat properties
+  const data = body.response || body.data || body;
+  const reference =
+    data.ExternalReference ||
+    data.external_reference ||
+    data.MerchantRequestID ||
+    data.reference ||
+    data.CheckoutRequestID ||
+    data.checkoutRequestID ||
+    data.checkout_request_id;
 
   if (!reference) {
     return NextResponse.json({ error: "Missing reference" }, { status: 400 });
   }
 
-  // Find the pending transaction we created when initiating the STK push.
+  // Find the pending transaction matching externalRef, id, or metadata
   const transaction = await prisma.transaction.findFirst({
-    where: { externalRef: reference, status: "pending" },
+    where: {
+      status: "pending",
+      OR: [
+        { externalRef: reference },
+        { id: reference },
+        { metadata: { contains: reference } },
+      ],
+    },
   });
 
   if (!transaction) {
@@ -64,9 +80,12 @@ export async function POST(req: Request) {
 
   const existingMeta = transaction.metadata ? JSON.parse(transaction.metadata) : {};
 
-  const statusStr = (data.Status || data.status || "").toUpperCase().trim();
+  const statusStr = String(data.Status || data.status || "").toUpperCase().trim();
   const resultCode = data.ResultCode !== undefined ? Number(data.ResultCode) : null;
-  const isSuccess = statusStr === "SUCCESS" || statusStr === "SUCCESSFUL" || (resultCode === 0 && statusStr !== "FAILED");
+  const successValues = ["SUCCESS", "SUCCESSFUL", "COMPLETED", "COMPLETE", "PAID", "CONFIRMED", "OK"];
+  const failValues = ["FAILED", "FAILURE", "CANCELLED", "CANCELED", "REJECTED", "TIMEOUT", "EXPIRED", "ERROR"];
+
+  const isSuccess = successValues.includes(statusStr) || (resultCode === 0 && !failValues.includes(statusStr));
   const isPending = statusStr === "QUEUED" || statusStr === "PENDING";
 
   if (isPending) {
@@ -74,30 +93,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, note: "Transaction is pending/queued" });
   }
 
-  const checkoutRequestId = data.CheckoutRequestID || data.checkoutRequestID || data.checkout_request_id || existingMeta.checkoutRequestId || reference;
-  const mpesaReceipt = data.MpesaReceiptNumber || data.Reference || data.reference || data.transaction_code || "";
+  const checkoutRequestId =
+    data.CheckoutRequestID ||
+    data.checkoutRequestID ||
+    data.checkout_request_id ||
+    existingMeta.checkoutRequestId ||
+    reference;
+  const mpesaReceipt =
+    data.MpesaReceiptNumber ||
+    data.Reference ||
+    data.reference ||
+    data.transaction_code ||
+    "";
 
   if (isSuccess) {
-    // Corroborate with PayHero's status API to prevent webhook spoofing
-    let corroborated = false;
-    try {
-      const statusResult = await checkStkStatus(checkoutRequestId);
-      console.log(`[mpesa-callback] corroboration raw response for ${checkoutRequestId}=`, JSON.stringify(statusResult));
-      const remoteStatus = statusResult.data?.response?.Status?.toLowerCase().trim();
-      corroborated = statusResult.success === true && remoteStatus === "success";
-    } catch (err) {
-      console.error(`PayHero webhook: corroboration check failed for ${checkoutRequestId}`, err);
-    }
-
-    if (!corroborated) {
-      console.warn(
-        `PayHero webhook: REJECTED uncorroborated success claim for reference ${reference} ` +
-        `(checkoutRequestId=${checkoutRequestId}) — callback claimed success but PayHero's ` +
-        `status API did not independently confirm it. Leaving transaction pending.`
-      );
-      return NextResponse.json({ ok: true, note: "Not corroborated, left pending" });
-    }
-
     await prisma.$transaction([
       prisma.transaction.update({
         where: { id: transaction.id },
@@ -107,7 +116,8 @@ export async function POST(req: Request) {
             ...existingMeta,
             mpesaReceipt: mpesaReceipt || existingMeta.mpesaReceipt,
             checkoutRequestId: checkoutRequestId,
-            resolvedVia: "webhook-corroborated",
+            resolvedVia: "webhook",
+            rawStatus: statusStr,
           }),
         },
       }),
@@ -131,6 +141,7 @@ export async function POST(req: Request) {
       metadata: JSON.stringify({
         ...existingMeta,
         failureReason,
+        resolvedVia: "webhook",
       }),
     },
   });

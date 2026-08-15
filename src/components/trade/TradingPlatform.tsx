@@ -144,9 +144,9 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
     syncInFlightRef.current = true;
     try {
       const [balRes, demoRes, posRes] = await Promise.all([
-        fetch("/api/balance"),
-        fetch("/api/demo-balance"),
-        fetch("/api/trades?status=open"),
+        fetch("/api/balance", { cache: "no-store" }),
+        fetch("/api/demo-balance", { cache: "no-store" }),
+        fetch("/api/trades?status=open", { cache: "no-store" }),
       ]);
 
       // Read all three responses BEFORE applying any state. Previously
@@ -482,6 +482,34 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
     if (sessionStatus === "loading") return;
     if (isAuthenticated) syncFromApi();
   }, [isAuthenticated, sessionStatus, syncFromApi]);
+
+  // Periodic background balance & positions sync
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const interval = setInterval(() => {
+      syncFromApi();
+    }, 8000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated, syncFromApi]);
+
+  const handleDepositSuccess = useCallback(
+    (newBal?: number) => {
+      if (typeof newBal === "number" && !isNaN(newBal)) {
+        setBalance(newBal);
+      }
+      setAccountMode("real");
+      syncInFlightRef.current = false;
+      syncFromApi();
+      if (typeof newBal === "number") {
+        pushToast({
+          kind: "closed-profit",
+          asset: "Balance Updated",
+          amount: newBal,
+        });
+      }
+    },
+    [syncFromApi, pushToast]
+  );
 
   // Fetch profile details (name/email/phone) for the nav drawer identity card
   useEffect(() => {
@@ -1321,7 +1349,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
         </nav>
       </div>
 
-      <DepositModal open={depositOpen} onClose={() => setDepositOpen(false)} onSuccess={syncFromApi} />
+      <DepositModal open={depositOpen} onClose={() => setDepositOpen(false)} onSuccess={handleDepositSuccess} />
 
       {scannerOpen && (
         <EntryScannerModal

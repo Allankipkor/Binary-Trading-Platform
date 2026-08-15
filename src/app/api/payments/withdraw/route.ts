@@ -4,6 +4,9 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { usdToKes } from "@/lib/mpesa";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const schema = z.object({
   method: z.enum(["mpesa", "crypto"]),
   amount: z.number().min(0.01).max(1000000),

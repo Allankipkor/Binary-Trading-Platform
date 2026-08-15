@@ -172,35 +172,42 @@ export async function checkStkStatus(checkoutRequestId: string): Promise<PayHero
     }
   );
 
-  const rawData = response.data;
+  const rawData = response.data || {};
 
-  // PayHero uses SUCCESS, FAILED, QUEUED status strings
-  const statusStr = (rawData.status || rawData.Status || "").toUpperCase().trim();
-  const innerData = rawData.data || rawData.response || rawData;
+  // PayHero uses SUCCESS, SUCCESSFUL, COMPLETED, PAID, FAILED, QUEUED status strings
+  const statusStr = String(rawData.status || rawData.Status || "").toUpperCase().trim();
+  const innerData = rawData.data || rawData.response || rawData || {};
+  const innerStatusStr = String(innerData.status || innerData.Status || "").toUpperCase().trim();
 
-  const isSuccess = statusStr === "SUCCESS" || innerData.status === "SUCCESS" || innerData.Status === "SUCCESS";
-  const isFailed = statusStr === "FAILED" || innerData.status === "FAILED" || innerData.Status === "FAILED";
-  const isPending = statusStr === "QUEUED" || innerData.status === "QUEUED" || innerData.Status === "QUEUED";
+  const successValues = ["SUCCESS", "SUCCESSFUL", "COMPLETED", "COMPLETE", "PAID", "CONFIRMED", "OK"];
+  const failValues = ["FAILED", "FAILURE", "CANCELLED", "CANCELED", "REJECTED", "TIMEOUT", "EXPIRED", "ERROR"];
+
+  const hasSuccessStatus = successValues.includes(statusStr) || successValues.includes(innerStatusStr);
+  const hasZeroResultCode = (rawData.ResultCode === 0 || innerData.ResultCode === 0) && !failValues.includes(statusStr) && !failValues.includes(innerStatusStr);
+  const isSuccess = hasSuccessStatus || hasZeroResultCode;
+
+  const isFailed = failValues.includes(statusStr) || failValues.includes(innerStatusStr);
+  const isPending = !isSuccess && !isFailed;
 
   let normalizedStatus = "Pending";
   if (isSuccess) normalizedStatus = "Success";
   else if (isFailed) normalizedStatus = "Failed";
 
-  const amount = innerData.Amount || innerData.amount || 0;
-  const externalRef = innerData.ExternalReference || innerData.external_reference || innerData.reference || checkoutRequestId;
-  const receipt = innerData.MpesaReceiptNumber || innerData.reference || innerData.transaction_code || "";
-  const resultDesc = rawData.message || rawData.ResultDesc || rawData.result_desc || "";
+  const amount = Number(innerData.Amount || innerData.amount || rawData.Amount || rawData.amount || 0);
+  const externalRef = innerData.ExternalReference || innerData.external_reference || innerData.reference || rawData.ExternalReference || checkoutRequestId;
+  const receipt = innerData.MpesaReceiptNumber || innerData.reference || innerData.transaction_code || rawData.MpesaReceiptNumber || "";
+  const resultDesc = rawData.message || rawData.ResultDesc || rawData.result_desc || innerData.ResultDesc || innerData.message || "";
 
   return {
     success: isSuccess || isFailed || isPending,
-    message: rawData.message,
+    message: rawData.message || resultDesc,
     data: {
       response: {
         Status: normalizedStatus,
         Amount: amount,
-        ExternalReference: externalRef,
-        MpesaReceiptNumber: receipt,
-        ResultDesc: resultDesc,
+        ExternalReference: String(externalRef),
+        MpesaReceiptNumber: String(receipt),
+        ResultDesc: String(resultDesc),
         CheckoutRequestID: checkoutRequestId,
       }
     }

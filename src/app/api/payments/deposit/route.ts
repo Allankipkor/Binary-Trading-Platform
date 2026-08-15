@@ -12,6 +12,9 @@ import {
 import { isPaypalConfigured } from "@/lib/paypal";
 import { getGateway, getPublicGateways } from "@/lib/gateways";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const schema = z.object({
   method: z.enum(["mpesa", "crypto", "card"]),
   amount: z.number().min(0.01).max(1000000),

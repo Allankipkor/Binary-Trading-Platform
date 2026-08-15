@@ -50,7 +50,7 @@ export default function WithdrawPage() {
   const MAX = 150000;
 
   useEffect(() => {
-    fetch("/api/payments/withdraw")
+    fetch("/api/payments/withdraw", { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => {
         setBalance(data.balance ?? 0);

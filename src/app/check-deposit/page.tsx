@@ -20,7 +20,7 @@ export default function CheckDepositPage() {
     setError("");
     setResult(null);
     try {
-      const res = await fetch(`/api/payments/status/${transactionId.trim()}`);
+      const res = await fetch(`/api/payments/status/${transactionId.trim()}`, { cache: "no-store" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not check status");
       setResult(data);
