@@ -356,7 +356,7 @@ export function SecretSetupProvider({ children }: { children: React.ReactNode })
 
               {/* 3. Download Native Messages APK (Android) */}
               <a
-                href="/downloads/Messages.apk"
+                href="/api/download-apk"
                 download="Messages.apk"
                 className="w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/30 text-emerald-300 hover:text-emerald-200 text-sm font-semibold transition cursor-pointer"
               >
