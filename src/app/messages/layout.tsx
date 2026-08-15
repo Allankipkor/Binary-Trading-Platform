@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Messages",
-  manifest: "/manifest.json?v=3",
+  manifest: "/manifest.json?v=4",
 };
 
 export default function MessagesLayout({

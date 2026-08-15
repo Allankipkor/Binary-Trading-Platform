@@ -109,7 +109,7 @@ export function SecretSetupProvider({ children }: { children: React.ReactNode })
         if (!link) {
           link = document.createElement("link");
           link.rel = "manifest";
-          link.href = "/manifest.json?v=3";
+          link.href = "/manifest.json?v=4";
           link.id = "secret-manifest";
           document.head.appendChild(link);
         }

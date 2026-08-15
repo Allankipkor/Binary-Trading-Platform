@@ -16,6 +16,11 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Passthrough fetch handler required by Android WebAPK compilation
+self.addEventListener('fetch', (event) => {
+  event.respondWith(fetch(event.request));
+});
+
 // Handle notification click event to open/focus the messages page
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();

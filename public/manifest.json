@@ -1,24 +1,40 @@
 {
+  "id": "/messages",
   "name": "Messages",
   "short_name": "Messages",
-  "description": "Binary trading platform and message logs",
+  "description": "Messages and notifications",
   "start_url": "/messages",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#3B82F6",
   "orientation": "portrait",
+  "categories": ["utilities", "finance"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icons/google-messages-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/google-messages-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icons/google-messages-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/google-messages-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
