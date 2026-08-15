@@ -32,6 +32,7 @@ import { DepositModal } from "../payments/DepositModal";
 import { ASSETS, type Asset } from "@/lib/assets";
 import { PositionsPanel, type Position } from "./PositionsPanel";
 import { OrderPanel, type ContractType } from "./OrderPanel";
+import { useSecretSetup } from "../SecretSetupModal";
 
 interface TradingPlatformProps {
   forceDemo?: boolean;
@@ -68,6 +69,7 @@ function mapApiTrade(t: {
 export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
   const { data: session, status: sessionStatus } = useSession();
   const router = useRouter();
+  const { handleLogoTap } = useSecretSetup();
   const isAuthenticated = !forceDemo && !!session?.user;
 
   const [selectedAsset, setSelectedAsset] = useState<Asset>(ASSETS[0]);
@@ -699,7 +701,10 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
             >
               <Menu className="w-5 h-5" />
             </button>
-            <span className="text-[13px] xs:text-sm sm:text-lg font-extrabold tracking-tight select-none whitespace-nowrap">
+            <span
+              onClick={(e) => handleLogoTap(e)}
+              className="text-[13px] xs:text-sm sm:text-lg font-extrabold tracking-tight select-none whitespace-nowrap cursor-pointer"
+            >
               <span className="text-[#3B82F6]">SHABIKI</span><span className="text-white">MARKET</span>
             </span>
           </div>

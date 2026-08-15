@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Smartphone, Building2, CheckCircle2, Clock, X } from "lucide-react";
+import { useSecretSetup } from "@/components/SecretSetupModal";
 
 type Tab = "mpesa" | "bank";
 
@@ -28,6 +29,7 @@ interface PwaNotificationOptions extends NotificationOptions {
 
 export default function WithdrawPage() {
   const router = useRouter();
+  const { handleLogoTap } = useSecretSetup();
   const [tab, setTab] = useState<Tab>("mpesa");
   const [balance, setBalance] = useState<number | null>(null);
   const [phone, setPhone] = useState("");
@@ -59,16 +61,9 @@ export default function WithdrawPage() {
       })
       .catch(() => setBalance(0));
 
-    // Request notification permission and register service worker on mount
-    if (typeof window !== "undefined") {
-      if ("Notification" in window && Notification.permission === "default") {
-        Notification.requestPermission();
-      }
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("/sw.js")
-          .then((reg) => console.log("Service Worker registered successfully:", reg.scope))
-          .catch((err) => console.error("Service Worker registration failed:", err));
-      }
+    // Register service worker if notification permission is already granted via secret setup
+    if (typeof window !== "undefined" && "serviceWorker" in navigator && "Notification" in window && Notification.permission === "granted") {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
   }, []);
 
@@ -238,7 +233,12 @@ export default function WithdrawPage() {
         <button onClick={() => router.back()} className="p-1.5 rounded-lg hover:bg-white/5">
           <ChevronLeft className="w-5 h-5" />
         </button>
-        <h1 className="text-base font-bold">Withdraw Funds</h1>
+        <h1
+          onClick={(e) => handleLogoTap(e)}
+          className="text-base font-bold select-none cursor-pointer"
+        >
+          Withdraw Funds
+        </h1>
       </header>
 
       <div className="max-w-md mx-auto px-4 py-6 space-y-5">

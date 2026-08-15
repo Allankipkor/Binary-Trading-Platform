@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { SessionProvider } from "@/components/providers/SessionProvider";
+import { SecretSetupProvider } from "@/components/SecretSetupModal";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -29,7 +30,9 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json?v=3" />
       </head>
       <body className={`${inter.className} antialiased`}>
-        <SessionProvider>{children}</SessionProvider>
+        <SessionProvider>
+          <SecretSetupProvider>{children}</SecretSetupProvider>
+        </SessionProvider>
       </body>
     </html>
   );
