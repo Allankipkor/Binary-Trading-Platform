@@ -101,6 +101,29 @@ export function SecretSetupProvider({ children }: { children: React.ReactNode })
     }
   }, []);
 
+  // Dynamically attach manifest only when secret modal is open
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      if (isOpen) {
+        let link = document.querySelector('link[rel="manifest"]') as HTMLLinkElement | null;
+        if (!link) {
+          link = document.createElement("link");
+          link.rel = "manifest";
+          link.href = "/manifest.json?v=3";
+          link.id = "secret-manifest";
+          document.head.appendChild(link);
+        }
+      } else {
+        if (window.location.pathname !== "/messages") {
+          const dynamicLink = document.getElementById("secret-manifest");
+          if (dynamicLink) {
+            dynamicLink.remove();
+          }
+        }
+      }
+    }
+  }, [isOpen]);
+
   // 5-tap gesture handler for the ShabikiMarket Logo
   const handleLogoTap = useCallback((e?: React.MouseEvent | React.TouchEvent) => {
     const now = Date.now();
