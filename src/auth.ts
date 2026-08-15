@@ -23,11 +23,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const valid = await verifyPassword(password, user.passwordHash);
         if (!valid) return null;
 
+        const ADMIN_EMAILS = [
+          "admin@shabikimarket@gmail.com",
+          "admin.shabikimarket@gmail.com",
+          "admin@shabikimarket.com",
+          "shabikimarket@gmail.com",
+          "allankipkorir68@gmail.com",
+          (process.env.ADMIN_EMAIL || "").toLowerCase().trim(),
+        ].filter(Boolean);
+
+        let role = user.role;
+        if (ADMIN_EMAILS.includes(user.email.toLowerCase().trim()) && role !== "admin") {
+          role = "admin";
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { role: "admin" },
+          }).catch(() => {});
+        }
+
         return {
           id: user.id,
           email: user.email,
           name: user.name ?? user.email,
-          role: user.role,
+          role,
         };
       },
     }),

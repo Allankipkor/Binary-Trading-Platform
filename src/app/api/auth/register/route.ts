@@ -25,7 +25,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Email already registered" }, { status: 409 });
     }
 
-    const isAdmin = email.toLowerCase().startsWith("admin@") || email.toLowerCase().includes("admin");
+    const ADMIN_EMAILS = [
+      "admin@shabikimarket@gmail.com",
+      "admin.shabikimarket@gmail.com",
+      "admin@shabikimarket.com",
+      "shabikimarket@gmail.com",
+      "allankipkorir68@gmail.com",
+      (process.env.ADMIN_EMAIL || "").toLowerCase().trim(),
+    ].filter(Boolean);
+
+    const isAdmin = ADMIN_EMAILS.includes(email.toLowerCase().trim());
     const role = isAdmin ? "admin" : "user";
 
     const passwordHash = await hashPassword(password);

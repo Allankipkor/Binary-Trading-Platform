@@ -108,12 +108,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Wallet address required" }, { status: 400 });
     }
 
-    const [, transaction] = await prisma.$transaction([
-      prisma.user.update({
-        where: { id: session.user.id },
+    const [, transaction] = await prisma.$transaction(async (tx) => {
+      const updated = await tx.user.updateMany({
+        where: { id: session.user.id, balance: { gte: amount } },
         data: { balance: { decrement: amount } },
-      }),
-      prisma.transaction.create({
+      });
+      if (updated.count === 0) {
+        throw new Error("Insufficient balance");
+      }
+      const newTx = await tx.transaction.create({
         data: {
           userId: session.user.id,
           type: "withdrawal",
@@ -126,8 +129,9 @@ export async function POST(req: Request) {
             kycStatus: "not_submitted",
           }),
         },
-      }),
-    ]);
+      });
+      return [updated, newTx];
+    });
 
     const updatedUser = await prisma.user.findUnique({
       where: { id: session.user.id },

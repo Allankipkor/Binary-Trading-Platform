@@ -78,21 +78,20 @@ export async function POST(req: Request) {
 
     const openPrice = await tickPrice(assetId);
     const expiresAt = new Date(Date.now() + durationSeconds * 1000);
-
-    // Store digit-contract metadata inside contractType string if no dedicated
-    // columns exist yet, e.g. "Even/Odd:Even:6" — falls back gracefully if
-    // your schema doesn't have separate digit/digitDirection columns.
     const enrichedContractType =
       digit !== undefined && digitDirection
         ? `${contractType}|${digitDirection}|${digit}`
         : contractType;
 
-    const [, trade] = await prisma.$transaction([
-      prisma.user.update({
-        where: { id: session.user.id },
+    const [, trade] = await prisma.$transaction(async (tx) => {
+      const updated = await tx.user.updateMany({
+        where: { id: session.user.id, balance: { gte: stake } },
         data: { balance: { decrement: stake } },
-      }),
-      prisma.trade.create({
+      });
+      if (updated.count === 0) {
+        throw new Error("Insufficient balance");
+      }
+      const newTrade = await tx.trade.create({
         data: {
           userId: session.user.id,
           assetId,
@@ -104,8 +103,9 @@ export async function POST(req: Request) {
           openPrice,
           expiresAt,
         },
-      }),
-    ]);
+      });
+      return [updated, newTrade];
+    });
 
     const updatedUser = await prisma.user.findUnique({
       where: { id: session.user.id },
