@@ -15,6 +15,17 @@ import {
   Sparkles,
   Search,
   Loader2,
+  Smartphone,
+  Bitcoin,
+  CreditCard,
+  Eye,
+  EyeOff,
+  Save,
+  Check,
+  Globe,
+  Key,
+  Wallet,
+  Zap,
 } from "lucide-react";
 
 interface AdminTrade {
@@ -44,6 +55,46 @@ interface AdminUser {
   manipulation: string;
 }
 
+interface AdminDeposit {
+  id: string;
+  amount: number;
+  method: string;
+  status: string;
+  createdAt: string;
+  user: {
+    email: string;
+    name: string | null;
+  };
+}
+
+interface AdminGateway {
+  id: "mpesa" | "crypto" | "card";
+  name: string;
+  enabled: boolean;
+  minDeposit: number | null;
+  maxDeposit: number | null;
+  config: string | null;
+  instructions: string | null;
+  parsedConfig: {
+    // M-Pesa
+    username?: string;
+    password?: string;
+    channelId?: string;
+    usdToKes?: number;
+    callbackUrl?: string;
+    // Crypto
+    address?: string;
+    network?: string;
+    tronGridApiKey?: string;
+    autoConfirm?: boolean;
+    // PayPal / Card
+    clientId?: string;
+    clientSecret?: string;
+    payeeEmail?: string;
+    env?: "sandbox" | "live";
+  };
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const { data: session, status: sessionStatus } = useSession();
@@ -52,13 +103,13 @@ export default function AdminPage() {
   const [manipulation, setManipulation] = useState<string>("normal");
   const [activeTrades, setActiveTrades] = useState<AdminTrade[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
-  const [loadingSettings, setLoadingSettings] = useState(true);
+  const [, setLoadingSettings] = useState(true);
   const [loadingTrades, setLoadingTrades] = useState(true);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [updatingMode, setUpdatingMode] = useState<string | null>(null);
 
   // Limits settings state
-  const [, setMinDeposit] = useState<number>(5);
+  const [globalMinDeposit, setMinDeposit] = useState<number>(5);
   const [, setMinWithdrawal] = useState<number>(100);
   const [, setMinStake] = useState<number>(5);
   const [inputMinDeposit, setInputMinDeposit] = useState<string>("5");
@@ -69,26 +120,16 @@ export default function AdminPage() {
   const [limitsError, setLimitsError] = useState("");
 
   // Deposits log state
-  interface AdminDeposit {
-    id: string;
-    amount: number;
-    method: string;
-    status: string;
-    createdAt: string;
-    user: {
-      email: string;
-      name: string | null;
-    };
-  }
   const [deposits, setDeposits] = useState<AdminDeposit[]>([]);
   const [loadingDeposits, setLoadingDeposits] = useState(true);
 
-  // Suppress warning by printing setting load status if needed in console
-  useEffect(() => {
-    if (!loadingSettings) {
-      console.log("Admin Settings Loaded");
-    }
-  }, [loadingSettings]);
+  // Gateways state
+  const [gateways, setGateways] = useState<AdminGateway[]>([]);
+  const [loadingGateways, setLoadingGateways] = useState(true);
+  const [savingGatewayId, setSavingGatewayId] = useState<string | null>(null);
+  const [gatewaySuccess, setGatewaySuccess] = useState<Record<string, boolean>>({});
+  const [gatewayErrors, setGatewayErrors] = useState<Record<string, string>>({});
+  const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
   
   // Search & Edit User states
   const [searchTerm, setSearchTerm] = useState("");
@@ -100,7 +141,7 @@ export default function AdminPage() {
   const [submittingUserEdit, setSubmittingUserEdit] = useState(false);
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<"trades" | "users" | "deposits">("trades");
+  const [activeTab, setActiveTab] = useState<"trades" | "users" | "deposits" | "gateways">("trades");
 
   // Auth checking
   const isAuthenticated = !!session?.user;
@@ -109,7 +150,6 @@ export default function AdminPage() {
   useEffect(() => {
     if (sessionStatus === "loading") return;
     if (!isAuthenticated || !isAdmin) {
-      // Allow a small delay to read the state
       return;
     }
 
@@ -117,6 +157,7 @@ export default function AdminPage() {
     fetchTrades();
     fetchUsers();
     fetchDeposits();
+    fetchGateways();
 
     // Set up polling for trades
     const interval = setInterval(() => {
@@ -188,6 +229,20 @@ export default function AdminPage() {
     }
   };
 
+  const fetchGateways = async () => {
+    try {
+      const res = await fetch("/api/admin/gateways");
+      if (res.ok) {
+        const data = await res.json();
+        setGateways(data.gateways || []);
+      }
+    } catch (e) {
+      console.error("Failed to fetch gateways:", e);
+    } finally {
+      setLoadingGateways(false);
+    }
+  };
+
   const handleUpdateLimits = async (e: React.FormEvent) => {
     e.preventDefault();
     setUpdatingLimits(true);
@@ -240,6 +295,86 @@ export default function AdminPage() {
       console.error(e);
     } finally {
       setUpdatingMode(null);
+    }
+  };
+
+  const handleGatewayChange = (id: string, field: string, value: any, isConfigField = false) => {
+    setGateways((prev) =>
+      prev.map((gw) => {
+        if (gw.id !== id) return gw;
+        if (isConfigField) {
+          return {
+            ...gw,
+            parsedConfig: {
+              ...gw.parsedConfig,
+              [field]: value,
+            },
+          };
+        }
+        return {
+          ...gw,
+          [field]: value,
+        };
+      })
+    );
+  };
+
+  const saveGateway = async (gw: AdminGateway) => {
+    setSavingGatewayId(gw.id);
+    setGatewayErrors((prev) => ({ ...prev, [gw.id]: "" }));
+    setGatewaySuccess((prev) => ({ ...prev, [gw.id]: false }));
+
+    try {
+      const res = await fetch("/api/admin/gateways", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: gw.id,
+          name: gw.name,
+          enabled: gw.enabled,
+          minDeposit: gw.minDeposit !== null && gw.minDeposit !== undefined ? Number(gw.minDeposit) : null,
+          maxDeposit: gw.maxDeposit !== null && gw.maxDeposit !== undefined ? Number(gw.maxDeposit) : null,
+          instructions: gw.instructions,
+          config: gw.parsedConfig,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to save gateway settings");
+      }
+
+      setGatewaySuccess((prev) => ({ ...prev, [gw.id]: true }));
+      setTimeout(() => {
+        setGatewaySuccess((prev) => ({ ...prev, [gw.id]: false }));
+      }, 3000);
+
+      // Refresh list to stay synced
+      fetchGateways();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to update gateway";
+      setGatewayErrors((prev) => ({ ...prev, [gw.id]: msg }));
+    } finally {
+      setSavingGatewayId(null);
+    }
+  };
+
+  const toggleGatewayEnabled = async (gw: AdminGateway) => {
+    const nextState = !gw.enabled;
+    handleGatewayChange(gw.id, "enabled", nextState);
+
+    try {
+      await fetch("/api/admin/gateways", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: gw.id,
+          enabled: nextState,
+        }),
+      });
+      fetchGateways();
+    } catch (err) {
+      console.error("Failed to toggle gateway status:", err);
     }
   };
 
@@ -383,18 +518,15 @@ export default function AdminPage() {
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         
         {/* STATS SECTION */}
-        <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <section className="grid grid-cols-1 sm:grid-cols-4 gap-4">
           
           <div className="bg-[#0d0f17] border border-white/[0.06] rounded-2xl p-4 flex items-center gap-4 relative overflow-hidden">
-            <div className="absolute right-0 bottom-0 translate-x-2 translate-y-2 opacity-5">
-              <Settings2 className="w-24 h-24 text-white" />
-            </div>
             <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
               <Settings2 className="w-5 h-5 text-purple-400" />
             </div>
             <div>
               <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block">Market Control</span>
-              <span className={`text-base font-extrabold capitalize ${
+              <span className={`text-sm font-extrabold capitalize ${
                 manipulation === "force_win" ? "text-emerald-400" :
                 manipulation === "force_loss" ? "text-rose-400" : "text-gray-300"
               }`}>
@@ -405,31 +537,37 @@ export default function AdminPage() {
           </div>
 
           <div className="bg-[#0d0f17] border border-white/[0.06] rounded-2xl p-4 flex items-center gap-4 relative overflow-hidden">
-            <div className="absolute right-0 bottom-0 translate-x-2 translate-y-2 opacity-5">
-              <TrendingUp className="w-24 h-24 text-white" />
-            </div>
             <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
               <TrendingUp className="w-5 h-5 text-emerald-400" />
             </div>
             <div>
               <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block">Active Market Trades</span>
-              <span className="text-base font-extrabold text-white tabular-nums">
+              <span className="text-sm font-extrabold text-white tabular-nums">
                 {loadingTrades ? "..." : activeTrades.length} Positions
               </span>
             </div>
           </div>
 
           <div className="bg-[#0d0f17] border border-white/[0.06] rounded-2xl p-4 flex items-center gap-4 relative overflow-hidden">
-            <div className="absolute right-0 bottom-0 translate-x-2 translate-y-2 opacity-5">
-              <Users className="w-24 h-24 text-white" />
-            </div>
             <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
               <Users className="w-5 h-5 text-blue-400" />
             </div>
             <div>
               <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block">Registered Accounts</span>
-              <span className="text-base font-extrabold text-white tabular-nums">
+              <span className="text-sm font-extrabold text-white tabular-nums">
                 {loadingUsers ? "..." : users.length} Users
+              </span>
+            </div>
+          </div>
+
+          <div className="bg-[#0d0f17] border border-white/[0.06] rounded-2xl p-4 flex items-center gap-4 relative overflow-hidden">
+            <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+              <Wallet className="w-5 h-5 text-cyan-400" />
+            </div>
+            <div>
+              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block">Payment Gateways</span>
+              <span className="text-sm font-extrabold text-white tabular-nums">
+                {gateways.filter((g) => g.enabled).length} of {gateways.length} Active
               </span>
             </div>
           </div>
@@ -447,7 +585,6 @@ export default function AdminPage() {
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
-            
             {/* NORMAL MODE CARD */}
             <button
               onClick={() => updateManipulationMode("normal")}
@@ -522,7 +659,6 @@ export default function AdminPage() {
                 <span className="text-[10px] text-gray-500 leading-tight block">All expirations settle as LOSS, auto-adjusting close prices to match.</span>
               </div>
             </button>
-
           </div>
         </section>
 
@@ -530,10 +666,10 @@ export default function AdminPage() {
         <section className="bg-[#0d0f17] border border-white/[0.07] rounded-3xl p-5 sm:p-6 space-y-4">
           <div className="flex items-center gap-2">
             <Settings2 className="w-4 h-4 text-blue-400" />
-            <h2 className="text-sm font-bold uppercase tracking-wider text-white">Financial Limits Configuration</h2>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-white">Global Financial Limits</h2>
           </div>
           <p className="text-xs text-gray-400 leading-relaxed max-w-2xl">
-            Configure the minimum amounts required for user deposits and withdrawals. Changes apply immediately to all clients.
+            Configure the baseline global minimum amounts for trades, deposits, and withdrawals. Gateways can optionally have custom minimum deposit thresholds configured below.
           </p>
 
           <form onSubmit={handleUpdateLimits} className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end pt-2">
@@ -573,7 +709,7 @@ export default function AdminPage() {
 
             <div>
               <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block mb-1.5">
-                Minimum Stake (USD)
+                Minimum Trade Stake (USD)
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
@@ -617,41 +753,486 @@ export default function AdminPage() {
         <section className="bg-[#0d0f17] border border-white/[0.07] rounded-3xl overflow-hidden flex flex-col">
           
           {/* Tabs */}
-          <div className="flex border-b border-white/[0.07] bg-[#0a0c12]">
+          <div className="flex border-b border-white/[0.07] bg-[#0a0c12] overflow-x-auto scrollbar-hide">
             <button
-              onClick={() => setActiveTab("trades")}
-              className={`flex-1 py-4 text-xs font-bold uppercase tracking-wider border-b-2 transition ${
-                activeTab === "trades"
-                  ? "border-[#3B82F6] text-white"
+              onClick={() => setActiveTab("gateways")}
+              className={`flex-1 min-w-[150px] py-4 text-xs font-bold uppercase tracking-wider border-b-2 transition flex items-center justify-center gap-2 ${
+                activeTab === "gateways"
+                  ? "border-[#3B82F6] text-white bg-white/[0.02]"
                   : "border-transparent text-gray-500 hover:text-gray-400"
               }`}
             >
-              Live Positions Monitor ({activeTrades.length})
+              <CreditCard className="w-3.5 h-3.5" />
+              Payment Gateways ({gateways.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("trades")}
+              className={`flex-1 min-w-[150px] py-4 text-xs font-bold uppercase tracking-wider border-b-2 transition flex items-center justify-center gap-2 ${
+                activeTab === "trades"
+                  ? "border-[#3B82F6] text-white bg-white/[0.02]"
+                  : "border-transparent text-gray-500 hover:text-gray-400"
+              }`}
+            >
+              <TrendingUp className="w-3.5 h-3.5" />
+              Positions Monitor ({activeTrades.length})
             </button>
             <button
               onClick={() => setActiveTab("users")}
-              className={`flex-1 py-4 text-xs font-bold uppercase tracking-wider border-b-2 transition ${
+              className={`flex-1 min-w-[150px] py-4 text-xs font-bold uppercase tracking-wider border-b-2 transition flex items-center justify-center gap-2 ${
                 activeTab === "users"
-                  ? "border-[#3B82F6] text-white"
+                  ? "border-[#3B82F6] text-white bg-white/[0.02]"
                   : "border-transparent text-gray-500 hover:text-gray-400"
               }`}
             >
+              <Users className="w-3.5 h-3.5" />
               Account Database ({users.length})
             </button>
             <button
               onClick={() => setActiveTab("deposits")}
-              className={`flex-1 py-4 text-xs font-bold uppercase tracking-wider border-b-2 transition ${
+              className={`flex-1 min-w-[150px] py-4 text-xs font-bold uppercase tracking-wider border-b-2 transition flex items-center justify-center gap-2 ${
                 activeTab === "deposits"
-                  ? "border-[#3B82F6] text-white"
+                  ? "border-[#3B82F6] text-white bg-white/[0.02]"
                   : "border-transparent text-gray-500 hover:text-gray-400"
               }`}
             >
+              <Wallet className="w-3.5 h-3.5" />
               Deposits Log ({deposits.length})
             </button>
           </div>
 
           <div className="p-4 sm:p-6 min-h-[300px]">
             
+            {/* PAYMENT GATEWAYS TAB */}
+            {activeTab === "gateways" && (
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/[0.05] pb-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Payment Gateway Management</h3>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Enable or disable payment methods, edit live API credentials, and set gateway-specific minimum deposit limits.
+                    </p>
+                  </div>
+                  <button
+                    onClick={fetchGateways}
+                    disabled={loadingGateways}
+                    className="self-start sm:self-auto px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-gray-300 font-semibold transition flex items-center gap-1.5"
+                  >
+                    <RotateCcw className={`w-3.5 h-3.5 ${loadingGateways ? "animate-spin" : ""}`} />
+                    Refresh Gateways
+                  </button>
+                </div>
+
+                {loadingGateways && gateways.length === 0 ? (
+                  <div className="py-12 flex flex-col items-center justify-center">
+                    <Loader2 className="w-6 h-6 text-gray-600 animate-spin mb-2" />
+                    <p className="text-xs text-gray-500">Loading payment gateways...</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-6">
+                    {gateways.map((gw) => {
+                      const isSaving = savingGatewayId === gw.id;
+                      const hasSuccess = gatewaySuccess[gw.id];
+                      const errorMsg = gatewayErrors[gw.id];
+                      const showSecret = showSecrets[gw.id];
+
+                      return (
+                        <div
+                          key={gw.id}
+                          className={`rounded-2xl border transition overflow-hidden ${
+                            gw.enabled
+                              ? "bg-[#111420] border-white/[0.08]"
+                              : "bg-[#0f1118]/80 border-white/[0.04] opacity-85"
+                          }`}
+                        >
+                          {/* Gateway Header */}
+                          <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.05] bg-white/[0.01]">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
+                                gw.id === "mpesa"
+                                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                                  : gw.id === "crypto"
+                                  ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
+                                  : "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                              }`}>
+                                {gw.id === "mpesa" ? (
+                                  <Smartphone className="w-5 h-5" />
+                                ) : gw.id === "crypto" ? (
+                                  <Bitcoin className="w-5 h-5" />
+                                ) : (
+                                  <CreditCard className="w-5 h-5" />
+                                )}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h4 className="text-sm font-bold text-white">{gw.name}</h4>
+                                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                                    gw.enabled
+                                      ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                                      : "bg-gray-500/15 text-gray-400 border border-white/10"
+                                  }`}>
+                                    {gw.enabled ? "Active" : "Disabled"}
+                                  </span>
+                                </div>
+                                <span className="text-[11px] text-gray-500">ID: {gw.id}</span>
+                              </div>
+                            </div>
+
+                            {/* Enable/Disable Switch */}
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs text-gray-400 font-semibold">
+                                {gw.enabled ? "Gateway Active" : "Gateway Offline"}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => toggleGatewayEnabled(gw)}
+                                className={`w-12 h-6 rounded-full relative transition-colors focus:outline-none ${
+                                  gw.enabled ? "bg-emerald-500" : "bg-white/15"
+                                }`}
+                              >
+                                <span
+                                  className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
+                                    gw.enabled ? "left-7" : "left-1"
+                                  }`}
+                                />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Gateway Config Form */}
+                          <div className="p-4 sm:p-5 space-y-4">
+                            
+                            {/* Limits Row */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-2 border-b border-white/[0.04]">
+                              <div>
+                                <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
+                                  Custom Min Deposit (USD)
+                                </label>
+                                <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    placeholder={`Default ($${globalMinDeposit.toFixed(2)})`}
+                                    value={gw.minDeposit !== null && gw.minDeposit !== undefined ? gw.minDeposit : ""}
+                                    onChange={(e) =>
+                                      handleGatewayChange(
+                                        gw.id,
+                                        "minDeposit",
+                                        e.target.value === "" ? null : parseFloat(e.target.value)
+                                      )
+                                    }
+                                    className="w-full bg-[#141822] border border-white/[0.07] rounded-xl pl-7 pr-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
+                                  />
+                                </div>
+                                <span className="text-[10px] text-gray-500 mt-1 block">Leave blank to use global min deposit.</span>
+                              </div>
+
+                              <div>
+                                <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
+                                  Max Deposit Limit (USD)
+                                </label>
+                                <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    placeholder="e.g. 50000"
+                                    value={gw.maxDeposit !== null && gw.maxDeposit !== undefined ? gw.maxDeposit : ""}
+                                    onChange={(e) =>
+                                      handleGatewayChange(
+                                        gw.id,
+                                        "maxDeposit",
+                                        e.target.value === "" ? null : parseFloat(e.target.value)
+                                      )
+                                    }
+                                    className="w-full bg-[#141822] border border-white/[0.07] rounded-xl pl-7 pr-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
+                                  />
+                                </div>
+                                <span className="text-[10px] text-gray-500 mt-1 block">Maximum single deposit transaction limit.</span>
+                              </div>
+                            </div>
+
+                            {/* Specific Fields: M-Pesa */}
+                            {gw.id === "mpesa" && (
+                              <div className="space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                  <div>
+                                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
+                                      PayHero Username / API Key
+                                    </label>
+                                    <input
+                                      type="text"
+                                      placeholder="PayHero Username"
+                                      value={gw.parsedConfig.username || ""}
+                                      onChange={(e) => handleGatewayChange(gw.id, "username", e.target.value, true)}
+                                      className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <div className="flex items-center justify-between mb-1">
+                                      <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
+                                        PayHero Password / Secret
+                                      </label>
+                                      <button
+                                        type="button"
+                                        onClick={() => setShowSecrets((prev) => ({ ...prev, [gw.id]: !showSecret }))}
+                                        className="text-[10px] text-gray-500 hover:text-gray-300 flex items-center gap-1"
+                                      >
+                                        {showSecret ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                        {showSecret ? "Hide" : "Show"}
+                                      </button>
+                                    </div>
+                                    <input
+                                      type={showSecret ? "text" : "password"}
+                                      placeholder="PayHero API Password"
+                                      value={gw.parsedConfig.password || ""}
+                                      onChange={(e) => handleGatewayChange(gw.id, "password", e.target.value, true)}
+                                      className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
+                                      Channel ID
+                                    </label>
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. 523"
+                                      value={gw.parsedConfig.channelId || ""}
+                                      onChange={(e) => handleGatewayChange(gw.id, "channelId", e.target.value, true)}
+                                      className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
+                                      USD to KES Exchange Rate
+                                    </label>
+                                    <div className="relative">
+                                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-xs">KES</span>
+                                      <input
+                                        type="number"
+                                        step="0.1"
+                                        placeholder="130"
+                                        value={gw.parsedConfig.usdToKes || 130}
+                                        onChange={(e) => handleGatewayChange(gw.id, "usdToKes", parseFloat(e.target.value), true)}
+                                        className="w-full bg-[#141822] border border-white/[0.07] rounded-xl pl-12 pr-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
+                                      />
+                                    </div>
+                                    <span className="text-[10px] text-gray-500 mt-1 block">1 USD = {gw.parsedConfig.usdToKes || 130} KES for STK push calculations.</span>
+                                  </div>
+
+                                  <div>
+                                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
+                                      M-Pesa Callback URL
+                                    </label>
+                                    <input
+                                      type="text"
+                                      placeholder="https://yourdomain.com/api/payments/mpesa/callback"
+                                      value={gw.parsedConfig.callbackUrl || ""}
+                                      onChange={(e) => handleGatewayChange(gw.id, "callbackUrl", e.target.value, true)}
+                                      className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Specific Fields: Crypto USDT */}
+                            {gw.id === "crypto" && (
+                              <div className="space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
+                                      USDT TRC20 Deposit Wallet Address
+                                    </label>
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. TTzp475Uc59m3Xx8ADuZfRV133xSRhgp4k"
+                                      value={gw.parsedConfig.address || ""}
+                                      onChange={(e) => handleGatewayChange(gw.id, "address", e.target.value, true)}
+                                      className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-emerald-400 font-mono outline-none focus:border-blue-500/50"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <div className="flex items-center justify-between mb-1">
+                                      <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
+                                        TronGrid API Key (Optional)
+                                      </label>
+                                      <button
+                                        type="button"
+                                        onClick={() => setShowSecrets((prev) => ({ ...prev, [gw.id]: !showSecret }))}
+                                        className="text-[10px] text-gray-500 hover:text-gray-300 flex items-center gap-1"
+                                      >
+                                        {showSecret ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                        {showSecret ? "Hide" : "Show"}
+                                      </button>
+                                    </div>
+                                    <input
+                                      type={showSecret ? "text" : "password"}
+                                      placeholder="TronGrid API Key for blockchain lookup"
+                                      value={gw.parsedConfig.tronGridApiKey || ""}
+                                      onChange={(e) => handleGatewayChange(gw.id, "tronGridApiKey", e.target.value, true)}
+                                      className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
+                                    />
+                                  </div>
+                                </div>
+
+                                {/* Auto-confirm Mode Toggle */}
+                                <div className="bg-[#141822] border border-white/[0.06] rounded-xl p-3 flex items-center justify-between gap-4">
+                                  <div>
+                                    <span className="text-xs font-bold text-white block">Auto-Confirm Simulated Mode</span>
+                                    <span className="text-[10px] text-gray-400 block">
+                                      When enabled, crypto deposits confirm instantly without real on-chain verification (dev/testing mode). Keep OFF for real on-chain blockchain checks.
+                                    </span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleGatewayChange(gw.id, "autoConfirm", !gw.parsedConfig.autoConfirm, true)}
+                                    className={`w-11 h-6 rounded-full relative transition-colors shrink-0 ${
+                                      gw.parsedConfig.autoConfirm ? "bg-amber-500" : "bg-white/20"
+                                    }`}
+                                  >
+                                    <span
+                                      className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
+                                        gw.parsedConfig.autoConfirm ? "left-6" : "left-1"
+                                      }`}
+                                    />
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Specific Fields: PayPal / Card */}
+                            {gw.id === "card" && (
+                              <div className="space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
+                                      PayPal Client ID
+                                    </label>
+                                    <input
+                                      type="text"
+                                      placeholder="PayPal Client ID"
+                                      value={gw.parsedConfig.clientId || ""}
+                                      onChange={(e) => handleGatewayChange(gw.id, "clientId", e.target.value, true)}
+                                      className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50 font-mono"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <div className="flex items-center justify-between mb-1">
+                                      <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
+                                        PayPal Client Secret
+                                      </label>
+                                      <button
+                                        type="button"
+                                        onClick={() => setShowSecrets((prev) => ({ ...prev, [gw.id]: !showSecret }))}
+                                        className="text-[10px] text-gray-500 hover:text-gray-300 flex items-center gap-1"
+                                      >
+                                        {showSecret ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                        {showSecret ? "Hide" : "Show"}
+                                      </button>
+                                    </div>
+                                    <input
+                                      type={showSecret ? "text" : "password"}
+                                      placeholder="PayPal Secret Key"
+                                      value={gw.parsedConfig.clientSecret || ""}
+                                      onChange={(e) => handleGatewayChange(gw.id, "clientSecret", e.target.value, true)}
+                                      className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50 font-mono"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
+                                      Payee Merchant Email (Optional Override)
+                                    </label>
+                                    <input
+                                      type="email"
+                                      placeholder="e.g. merchant@example.com"
+                                      value={gw.parsedConfig.payeeEmail || ""}
+                                      onChange={(e) => handleGatewayChange(gw.id, "payeeEmail", e.target.value, true)}
+                                      className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
+                                      Environment Mode
+                                    </label>
+                                    <select
+                                      value={gw.parsedConfig.env || "live"}
+                                      onChange={(e) => handleGatewayChange(gw.id, "env", e.target.value as any, true)}
+                                      className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
+                                    >
+                                      <option value="live">Live Production (Real money)</option>
+                                      <option value="sandbox">Sandbox Test Environment</option>
+                                    </select>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* User Instructions */}
+                            <div>
+                              <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
+                                Customer Instructions / Notes (Displayed in Deposit Modal)
+                              </label>
+                              <textarea
+                                rows={2}
+                                placeholder="Instructions visible to traders when selecting this method"
+                                value={gw.instructions || ""}
+                                onChange={(e) => handleGatewayChange(gw.id, "instructions", e.target.value)}
+                                className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50 resize-none"
+                              />
+                            </div>
+
+                            {/* Feedback messages */}
+                            {errorMsg && (
+                              <p className="text-[11px] text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg px-3 py-2">
+                                {errorMsg}
+                              </p>
+                            )}
+
+                            {hasSuccess && (
+                              <p className="text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2 flex items-center gap-1.5">
+                                <Check className="w-3.5 h-3.5" />
+                                {gw.name} settings saved and updated in live database!
+                              </p>
+                            )}
+
+                            {/* Action Buttons */}
+                            <div className="flex justify-end pt-2">
+                              <button
+                                type="button"
+                                onClick={() => saveGateway(gw)}
+                                disabled={isSaving}
+                                className="px-5 py-2.5 rounded-xl bg-[#3B82F6] hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-blue-500/10"
+                              >
+                                {isSaving ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Save className="w-3.5 h-3.5" />
+                                )}
+                                Save {gw.name} Settings
+                              </button>
+                            </div>
+
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* TRADES TAB */}
             {activeTab === "trades" && (
               <div className="space-y-4">
@@ -727,7 +1308,6 @@ export default function AdminPage() {
             {/* USERS TAB */}
             {activeTab === "users" && (
               <div className="space-y-4">
-                
                 {/* Search / Filter bar */}
                 <div className="flex items-center gap-3 bg-[#141822] border border-white/[0.07] rounded-xl px-3.5 py-1.5">
                   <Search className="w-4 h-4 text-gray-500 shrink-0" />

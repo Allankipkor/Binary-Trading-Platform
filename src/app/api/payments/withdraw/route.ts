@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { usdToKes } from "@/lib/mpesa";
 
 const schema = z.object({
   method: z.enum(["mpesa", "crypto"]),
@@ -149,7 +150,7 @@ export async function POST(req: Request) {
 
     if (method === "mpesa") {
       title = "MPESA";
-      const calculatedKes = amount * 130;
+      const calculatedKes = await usdToKes(amount);
       const kshAmountStr = calculatedKes.toLocaleString("en-US", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,

@@ -9,6 +9,8 @@ import {
   isAutoConfirmEnabled,
   isCryptoConfigured,
 } from "@/lib/crypto";
+import { isPaypalConfigured } from "@/lib/paypal";
+import { getGateway, getPublicGateways } from "@/lib/gateways";
 
 const schema = z.object({
   method: z.enum(["mpesa", "crypto", "card"]),
@@ -21,12 +23,16 @@ export async function GET() {
     const setting = await prisma.marketSetting.findUnique({
       where: { id: "default" },
     });
+    const globalMin = setting?.minDeposit ?? 5.0;
+    const gateways = await getPublicGateways(globalMin);
+
     return NextResponse.json({
-      minDeposit: setting?.minDeposit ?? 5.0,
+      minDeposit: globalMin,
+      gateways,
     });
   } catch (error) {
     console.error("Failed to fetch deposit settings:", error);
-    return NextResponse.json({ minDeposit: 5.0 });
+    return NextResponse.json({ minDeposit: 5.0, gateways: [] });
   }
 }
 
@@ -50,14 +56,34 @@ export async function POST(req: Request) {
 
     const { method, amount, phone } = parsed.data;
 
+    // Fetch gateway & global settings
     const setting = await prisma.marketSetting.findUnique({
       where: { id: "default" },
     });
-    const minDeposit = setting?.minDeposit ?? 5.0;
+    const globalMin = setting?.minDeposit ?? 5.0;
 
-    if (amount < minDeposit) {
+    const gateway = await getGateway(method);
+    if (!gateway.enabled) {
       return NextResponse.json(
-        { error: `Minimum deposit is $${minDeposit}` },
+        { error: `${gateway.name} is currently unavailable for deposits.` },
+        { status: 400 }
+      );
+    }
+
+    const effectiveMin = gateway.minDeposit !== null && gateway.minDeposit > 0
+      ? gateway.minDeposit
+      : globalMin;
+
+    if (amount < effectiveMin) {
+      return NextResponse.json(
+        { error: `Minimum deposit for ${gateway.name} is $${effectiveMin.toFixed(2)}` },
+        { status: 400 }
+      );
+    }
+
+    if (gateway.maxDeposit !== null && gateway.maxDeposit > 0 && amount > gateway.maxDeposit) {
+      return NextResponse.json(
+        { error: `Maximum deposit for ${gateway.name} is $${gateway.maxDeposit.toFixed(2)}` },
         { status: 400 }
       );
     }
@@ -65,9 +91,10 @@ export async function POST(req: Request) {
     const reference = generateDepositReference();
 
     if (method === "mpesa") {
-      if (!isMpesaConfigured()) {
+      const mpesaReady = await isMpesaConfigured();
+      if (!mpesaReady) {
         return NextResponse.json(
-          { error: "M-Pesa not configured. Add PAYHERO_USERNAME, PAYHERO_PASSWORD, and PAYHERO_CHANNEL_ID to .env" },
+          { error: "M-Pesa payment gateway is not properly configured." },
           { status: 503 }
         );
       }
@@ -78,7 +105,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Phone number required for M-Pesa" }, { status: 400 });
       }
 
-      const amountKes = usdToKes(amount);
+      const amountKes = await usdToKes(amount);
       if (amountKes < 1) {
         return NextResponse.json(
           { error: "Amount is too small to convert to a valid M-Pesa charge" },
@@ -136,13 +163,16 @@ export async function POST(req: Request) {
     }
 
     if (method === "crypto") {
-      const address = getUsdtDepositAddress();
-      if (!isCryptoConfigured()) {
+      const cryptoReady = await isCryptoConfigured();
+      const address = await getUsdtDepositAddress();
+      if (!cryptoReady || !address) {
         return NextResponse.json(
-          { error: "Crypto deposits not configured. Set CRYPTO_USDT_ADDRESS in .env" },
+          { error: "Crypto USDT deposit gateway is not configured." },
           { status: 503 }
         );
       }
+
+      const autoConfirm = await isAutoConfirmEnabled();
 
       const transaction = await prisma.transaction.create({
         data: {
@@ -157,7 +187,7 @@ export async function POST(req: Request) {
         },
       });
 
-      if (isAutoConfirmEnabled()) {
+      if (autoConfirm) {
         await prisma.$transaction([
           prisma.transaction.update({
             where: { id: transaction.id },
@@ -199,13 +229,22 @@ export async function POST(req: Request) {
       });
     }
 
-    // Card placeholder — integrate Stripe/Paystack later
+    // Card / PayPal
+    const cardReady = await isPaypalConfigured();
+    if (!cardReady) {
+      return NextResponse.json(
+        { error: "Card / PayPal gateway is not configured." },
+        { status: 503 }
+      );
+    }
+
     const transaction = await prisma.transaction.create({
       data: {
         userId: session.user.id,
         type: "deposit",
         method: "card",
         amount,
+        currency: "USD",
         status: "pending",
         externalRef: reference,
       },
@@ -215,7 +254,7 @@ export async function POST(req: Request) {
       transactionId: transaction.id,
       method: "card",
       status: "pending",
-      message: "Card payments coming soon. Use M-Pesa or crypto for now.",
+      message: "Card deposit initiated.",
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Deposit failed";

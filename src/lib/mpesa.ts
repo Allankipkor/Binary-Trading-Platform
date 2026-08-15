@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getGateway, type MpesaConfig } from "./gateways";
 
 /**
  * Format Kenyan phone number to 2547XXXXXXXX
@@ -11,7 +12,7 @@ function formatPhone(phone: string): string {
   return digits;
 }
 
-function cleanEnvVar(val: string | undefined): string {
+function cleanVal(val: string | undefined | null): string {
   if (!val) return "";
   let clean = val.trim();
   if ((clean.startsWith('"') && clean.endsWith('"')) || (clean.startsWith("'") && clean.endsWith("'"))) {
@@ -21,6 +22,41 @@ function cleanEnvVar(val: string | undefined): string {
 }
 
 const PAYHERO_BASE_URL = process.env.PAYHERO_BASE_URL ?? "https://backend.payhero.co.ke/api/v2";
+
+/**
+ * Get effective Mpesa configuration (DB settings overriding .env defaults)
+ */
+export async function getMpesaSettings(): Promise<{
+  enabled: boolean;
+  username: string;
+  password: string;
+  channelId: string;
+  usdToKes: number;
+  callbackUrl: string;
+}> {
+  try {
+    const gw = await getGateway("mpesa");
+    const cfg = gw.parsedConfig as MpesaConfig;
+
+    return {
+      enabled: gw.enabled,
+      username: cleanVal(cfg.username) || cleanVal(process.env.PAYHERO_USERNAME),
+      password: cleanVal(cfg.password) || cleanVal(process.env.PAYHERO_PASSWORD),
+      channelId: cleanVal(cfg.channelId) || cleanVal(process.env.PAYHERO_CHANNEL_ID),
+      usdToKes: cfg.usdToKes && cfg.usdToKes > 0 ? cfg.usdToKes : parseFloat(process.env.USD_TO_KES ?? "130"),
+      callbackUrl: cleanVal(cfg.callbackUrl) || cleanVal(process.env.MPESA_CALLBACK_URL),
+    };
+  } catch {
+    return {
+      enabled: true,
+      username: cleanVal(process.env.PAYHERO_USERNAME),
+      password: cleanVal(process.env.PAYHERO_PASSWORD),
+      channelId: cleanVal(process.env.PAYHERO_CHANNEL_ID),
+      usdToKes: parseFloat(process.env.USD_TO_KES ?? "130"),
+      callbackUrl: cleanVal(process.env.MPESA_CALLBACK_URL),
+    };
+  }
+}
 
 /**
  * INITIATE PAYHERO STK PUSH
@@ -34,21 +70,19 @@ export async function initiateStkPush(params: {
   accountReference: string;
   transactionDesc: string;
 }) {
-  const username = cleanEnvVar(process.env.PAYHERO_USERNAME);
-  const password = cleanEnvVar(process.env.PAYHERO_PASSWORD);
-  const channelId = cleanEnvVar(process.env.PAYHERO_CHANNEL_ID);
+  const settings = await getMpesaSettings();
 
-  if (!username || !password || !channelId) {
-    throw new Error("PayHero credentials not configured");
+  if (!settings.username || !settings.password || !settings.channelId) {
+    throw new Error("PayHero credentials not configured. Please configure in Admin Settings.");
   }
 
-  const callbackUrl = process.env.MPESA_CALLBACK_URL;
+  const callbackUrl = settings.callbackUrl || process.env.MPESA_CALLBACK_URL;
   if (!callbackUrl) {
     throw new Error("MPESA_CALLBACK_URL not configured");
   }
 
   const externalReference = params.accountReference?.slice(0, 32) ?? "OPENMARKET";
-  const authHeader = `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
+  const authHeader = `Basic ${Buffer.from(`${settings.username}:${settings.password}`).toString("base64")}`;
 
   let response;
   try {
@@ -57,7 +91,7 @@ export async function initiateStkPush(params: {
       {
         amount: Math.ceil(params.amountKes),
         phone_number: formatPhone(params.phone),
-        channel_id: parseInt(channelId),
+        channel_id: parseInt(settings.channelId),
         provider: "m-pesa",
         external_reference: externalReference,
         callback_url: callbackUrl,
@@ -119,14 +153,13 @@ export interface PayHeroStatusResponse {
  * Per PayHero's docs: GET {PAYHERO_BASE_URL}/transaction-status
  */
 export async function checkStkStatus(checkoutRequestId: string): Promise<PayHeroStatusResponse> {
-  const username = cleanEnvVar(process.env.PAYHERO_USERNAME);
-  const password = cleanEnvVar(process.env.PAYHERO_PASSWORD);
+  const settings = await getMpesaSettings();
 
-  if (!username || !password) {
+  if (!settings.username || !settings.password) {
     throw new Error("PayHero credentials not configured");
   }
 
-  const authHeader = `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
+  const authHeader = `Basic ${Buffer.from(`${settings.username}:${settings.password}`).toString("base64")}`;
 
   const response = await axios.get(
     `${PAYHERO_BASE_URL}/transaction-status`,
@@ -135,7 +168,7 @@ export async function checkStkStatus(checkoutRequestId: string): Promise<PayHero
       headers: {
         Authorization: authHeader,
       },
-      validateStatus: () => true, // we want to inspect error status codes/bodies ourselves
+      validateStatus: () => true,
     }
   );
 
@@ -177,17 +210,15 @@ export async function checkStkStatus(checkoutRequestId: string): Promise<PayHero
 /**
  * USD → KES conversion
  */
-export function usdToKes(usd: number): number {
-  const rate = parseFloat(process.env.USD_TO_KES ?? "130");
-  return Math.ceil(usd * rate);
+export async function usdToKes(usd: number): Promise<number> {
+  const settings = await getMpesaSettings();
+  return Math.ceil(usd * settings.usdToKes);
 }
 
 /**
  * Check if PayHero M-Pesa is configured
  */
-export function isMpesaConfigured(): boolean {
-  const username = cleanEnvVar(process.env.PAYHERO_USERNAME);
-  const password = cleanEnvVar(process.env.PAYHERO_PASSWORD);
-  const channelId = cleanEnvVar(process.env.PAYHERO_CHANNEL_ID);
-  return !!(username && password && channelId);
+export async function isMpesaConfigured(): Promise<boolean> {
+  const settings = await getMpesaSettings();
+  return !!(settings.username && settings.password && settings.channelId && settings.enabled);
 }

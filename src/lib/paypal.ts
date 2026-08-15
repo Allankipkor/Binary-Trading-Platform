@@ -1,37 +1,82 @@
 // PayPal REST API integration (Orders v2 API + OAuth client-credentials).
 // Used by the "card" tab in DepositModal — PayPal's hosted button covers
-// both PayPal-balance payments and debit/credit cards in one integration,
-// so this single backend handles both.
+// both PayPal-balance payments and debit/credit cards in one integration.
 
-const PAYPAL_API_BASE = process.env.PAYPAL_ENV === "live"
-  ? "https://api-m.paypal.com"
-  : "https://api-m.sandbox.paypal.com";
+import { getGateway, type PaypalConfig } from "./gateways";
 
-export function isPaypalConfigured(): boolean {
-  return !!(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET);
+export async function getPaypalSettings(): Promise<{
+  enabled: boolean;
+  clientId: string;
+  clientSecret: string;
+  payeeEmail?: string;
+  env: "sandbox" | "live";
+  apiBase: string;
+}> {
+  try {
+    const gw = await getGateway("card");
+    const cfg = gw.parsedConfig as PaypalConfig;
+
+    const clientId = cfg.clientId || process.env.PAYPAL_CLIENT_ID || process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
+    const clientSecret = cfg.clientSecret || process.env.PAYPAL_CLIENT_SECRET || "";
+    const payeeEmail = cfg.payeeEmail || process.env.PAYPAL_PAYEE_EMAIL || undefined;
+    const env = cfg.env || (process.env.PAYPAL_ENV as "sandbox" | "live") || "live";
+
+    const apiBase = env === "live"
+      ? "https://api-m.paypal.com"
+      : "https://api-m.sandbox.paypal.com";
+
+    return {
+      enabled: gw.enabled,
+      clientId,
+      clientSecret,
+      payeeEmail,
+      env,
+      apiBase,
+    };
+  } catch {
+    const clientId = process.env.PAYPAL_CLIENT_ID || process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
+    const clientSecret = process.env.PAYPAL_CLIENT_SECRET || "";
+    const payeeEmail = process.env.PAYPAL_PAYEE_EMAIL || undefined;
+    const env = (process.env.PAYPAL_ENV as "sandbox" | "live") || "live";
+    const apiBase = env === "live"
+      ? "https://api-m.paypal.com"
+      : "https://api-m.sandbox.paypal.com";
+
+    return {
+      enabled: true,
+      clientId,
+      clientSecret,
+      payeeEmail,
+      env,
+      apiBase,
+    };
+  }
 }
 
-let cachedToken: { value: string; expiresAt: number } | null = null;
+export async function isPaypalConfigured(): Promise<boolean> {
+  const settings = await getPaypalSettings();
+  return !!(settings.clientId && settings.clientSecret && settings.enabled);
+}
+
+let cachedToken: { value: string; expiresAt: number; clientId: string } | null = null;
 
 /**
- * Exchanges our client ID + secret for a short-lived OAuth access token,
- * caching it in memory until shortly before it expires. The secret never
- * leaves the server — only the resulting token (and only the front-end's
- * own public clientId, separately) is ever exposed to the browser.
+ * Exchanges our client ID + secret for a short-lived OAuth access token.
  */
 async function getAccessToken(): Promise<string> {
-  if (cachedToken && cachedToken.expiresAt > Date.now()) {
+  const settings = await getPaypalSettings();
+  const { clientId, clientSecret, apiBase } = settings;
+
+  if (cachedToken && cachedToken.expiresAt > Date.now() && cachedToken.clientId === clientId) {
     return cachedToken.value;
   }
 
-  const clientId = process.env.PAYPAL_CLIENT_ID;
-  const secret = process.env.PAYPAL_CLIENT_SECRET;
-  if (!clientId || !secret) {
-    throw new Error("PayPal not configured. Set PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET in .env");
+  if (!clientId || !clientSecret) {
+    throw new Error("PayPal not configured. Configure in Admin Settings or set in .env");
   }
 
-  const basicAuth = Buffer.from(`${clientId}:${secret}`).toString("base64");
-  const res = await fetch(`${PAYPAL_API_BASE}/v1/oauth2/token`, {
+  const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+  const res = await fetch(`${apiBase}/v1/oauth2/token`, {
     method: "POST",
     headers: {
       Authorization: `Basic ${basicAuth}`,
@@ -46,11 +91,10 @@ async function getAccessToken(): Promise<string> {
   }
 
   const data = await res.json();
-  // Refresh a little early (60s buffer) rather than risk using a token that
-  // expires mid-request.
   cachedToken = {
     value: data.access_token,
     expiresAt: Date.now() + (data.expires_in - 60) * 1000,
+    clientId,
   };
   return cachedToken.value;
 }
@@ -60,28 +104,17 @@ export interface CreateOrderResult {
 }
 
 /**
- * Creates a PayPal order for the given USD amount. The amount lives only on
- * the server — the browser never gets to specify or tamper with it; the
- * front-end only ever receives back the order ID to hand to the PayPal
- * button's approval flow.
- *
- * If PAYPAL_PAYEE_EMAIL is set, funds settle into THAT PayPal account
- * instead of the one tied to PAYPAL_CLIENT_ID/SECRET — this is the standard
- * "platform/developer builds for merchant" pattern: our app's credentials
- * process the payment, but a different account (the merchant of record)
- * actually receives the money. PayPal requires that account to have granted
- * consent to our Client ID beforehand; without it, PayPal returns an
- * explicit "payee does not have appropriate consent" error rather than
- * silently failing or sending funds anywhere unintended.
+ * Creates a PayPal order for the given USD amount.
  */
 export async function createPaypalOrder(params: {
   amount: number;
   referenceId: string;
 }): Promise<CreateOrderResult> {
+  const settings = await getPaypalSettings();
   const token = await getAccessToken();
-  const payeeEmail = process.env.PAYPAL_PAYEE_EMAIL;
+  const payeeEmail = settings.payeeEmail;
 
-  const res = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders`, {
+  const res = await fetch(`${settings.apiBase}/v2/checkout/orders`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -121,17 +154,13 @@ export interface CaptureOrderResult {
 }
 
 /**
- * Captures a previously-created and buyer-approved order. This is the only
- * point at which money actually moves — createPaypalOrder above never
- * charges anything by itself. Returns the AMOUNT PAYPAL ACTUALLY CAPTURED,
- * which the caller must use as the source of truth rather than whatever
- * amount it originally intended to charge, since this is what guards
- * against any mismatch between intent and reality.
+ * Captures a previously-created and buyer-approved order.
  */
 export async function capturePaypalOrder(orderId: string): Promise<CaptureOrderResult> {
+  const settings = await getPaypalSettings();
   const token = await getAccessToken();
 
-  const res = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders/${orderId}/capture`, {
+  const res = await fetch(`${settings.apiBase}/v2/checkout/orders/${orderId}/capture`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -158,9 +187,6 @@ export async function capturePaypalOrder(orderId: string): Promise<CaptureOrderR
     currency: capture.amount?.currency_code ?? "USD",
     captureId: capture.id,
     payerEmail: data.payer?.email_address,
-    // Echoes back which account actually received the funds — useful to
-    // store alongside the transaction, especially when PAYPAL_PAYEE_EMAIL
-    // is set, so there's a record confirming the redirect actually applied.
     payeeEmail: purchaseUnit?.payee?.email_address,
   };
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X, Smartphone, Bitcoin, CreditCard, Copy, Check } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { X, Smartphone, Bitcoin, CreditCard, Copy, Check, AlertCircle } from "lucide-react";
 import {
   PayPalScriptProvider,
   PayPalButtons,
@@ -9,12 +9,23 @@ import {
 
 type Tab = "mpesa" | "crypto" | "card";
 
-// Maps a PayPal orderId -> our own transactionId, bridging createOrder and
-// onApprove (PayPalOneTimePaymentButton only hands the orderId back to
-// onApprove, not anything else we passed into createOrder). Module-level
-// rather than component state since it's short-lived internal plumbing,
-// not something that should trigger a re-render.
 const paypalTransactionByOrderId: Record<string, string> = {};
+
+interface GatewayInfo {
+  id: "mpesa" | "crypto" | "card";
+  name: string;
+  enabled: boolean;
+  minDeposit: number;
+  maxDeposit: number | null;
+  instructions: string | null;
+  clientConfig?: {
+    paypalClientId?: string;
+    paypalEnv?: string;
+    cryptoAddress?: string;
+    cryptoNetwork?: string;
+    usdToKes?: number;
+  };
+}
 
 interface DepositModalProps {
   open: boolean;
@@ -43,7 +54,8 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
   const [cryptoResult, setCryptoResult] = useState<CryptoResult | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const [minDeposit, setMinDeposit] = useState(5);
+  const [globalMinDeposit, setGlobalMinDeposit] = useState(5);
+  const [gateways, setGateways] = useState<GatewayInfo[]>([]);
 
   useEffect(() => {
     if (!open) return;
@@ -51,11 +63,34 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
       .then((r) => r.json())
       .then((data) => {
         if (data.minDeposit !== undefined) {
-          setMinDeposit(data.minDeposit);
+          setGlobalMinDeposit(data.minDeposit);
+        }
+        if (Array.isArray(data.gateways) && data.gateways.length > 0) {
+          setGateways(data.gateways);
+          // If current tab is disabled, switch to first enabled tab
+          const activeGw = data.gateways.find((g: GatewayInfo) => g.id === tab && g.enabled);
+          if (!activeGw) {
+            const firstEnabled = data.gateways.find((g: GatewayInfo) => g.enabled);
+            if (firstEnabled) {
+              setTab(firstEnabled.id);
+            }
+          }
         }
       })
-      .catch((e) => console.error("Failed to load deposit limit", e));
-  }, [open]);
+      .catch((e) => console.error("Failed to load deposit settings", e));
+  }, [open, tab]);
+
+  const currentGateway = useMemo(() => {
+    return gateways.find((g) => g.id === tab);
+  }, [gateways, tab]);
+
+  const activeMinDeposit = currentGateway?.minDeposit ?? globalMinDeposit;
+
+  useEffect(() => {
+    if (amount < activeMinDeposit) {
+      setAmount(activeMinDeposit);
+    }
+  }, [activeMinDeposit, amount]);
 
   if (!open) return null;
 
@@ -91,7 +126,7 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
           return;
         }
       } catch {
-        // network hiccup — keep polling, don't surface an error for a transient miss
+        // keep polling
       }
 
       if (attempts >= maxAttempts) {
@@ -183,13 +218,7 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error ?? "Could not start checkout");
-    // Stash the transactionId on the orderId's own response so the capture
-    // step below can find it again — simplest way to thread this through
-    // without extra component state, since PayPalButtons' onApprove only
-    // gets handed back the orderID, not anything else we passed in here.
     paypalTransactionByOrderId[data.orderId] = data.transactionId;
-    // The classic SDK's createOrder expects the bare order ID string to be
-    // returned directly — not wrapped in an object, unlike the v6 SDK.
     return data.orderId;
   };
 
@@ -220,6 +249,11 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
     { id: "card", label: "Card", icon: CreditCard },
   ];
 
+  // Dynamic PayPal client ID from gateway config or env
+  const dynamicPaypalClientId = currentGateway?.id === "card" && currentGateway.clientConfig?.paypalClientId
+    ? currentGateway.clientConfig.paypalClientId
+    : process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm safe-x">
       <div className="w-full sm:max-w-md max-h-[92dvh] sm:max-h-[90dvh] flex flex-col rounded-t-2xl sm:rounded-2xl border border-white/[0.07] bg-[#1c2030] shadow-2xl safe-bottom">
@@ -230,149 +264,186 @@ export function DepositModal({ open, onClose, onSuccess, userPhone }: DepositMod
           </button>
         </div>
 
+        {/* Gateway Tabs */}
         <div className="flex border-b border-white/[0.07]">
-          {tabs.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => { setTab(id); reset(); }}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-semibold transition ${
-                tab === id
-                  ? "text-[#3B82F6] border-b-2 border-[#3B82F6]"
-                  : "text-gray-500 hover:text-gray-300"
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              {label}
-            </button>
-          ))}
+          {tabs.map(({ id, label, icon: Icon }) => {
+            const gw = gateways.find((g) => g.id === id);
+            const isEnabled = gw ? gw.enabled : true;
+
+            return (
+              <button
+                key={id}
+                onClick={() => {
+                  setTab(id);
+                  reset();
+                }}
+                disabled={!isEnabled}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-semibold transition relative ${
+                  tab === id
+                    ? "text-[#3B82F6] border-b-2 border-[#3B82F6]"
+                    : isEnabled
+                    ? "text-gray-500 hover:text-gray-300"
+                    : "text-gray-600 opacity-40 cursor-not-allowed"
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {label}
+                {!isEnabled && (
+                  <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-rose-500/80" title="Disabled by Admin" />
+                )}
+              </button>
+            );
+          })}
         </div>
 
         <div className="p-4 sm:p-5 space-y-4 overflow-y-auto overscroll-contain flex-1">
-          <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">
-              Amount (USD) <span className="text-gray-600">· min ${minDeposit}</span>
-            </label>
-            <input
-              type="number"
-              min={minDeposit}
-              max={10000}
-              value={amount}
-              onChange={(e) => setAmount(Number(e.target.value))}
-              className="w-full px-4 py-3 rounded-xl bg-[#13161e] border border-white/[0.07] text-white text-sm focus:outline-none focus:border-[#3B82F6]/50"
-            />
-            <div className="flex gap-1.5 mt-2">
-              {[10, 25, 50, 100, 200].map((v) => (
-                <button
-                  key={v}
-                  onClick={() => setAmount(v)}
-                  className={`flex-1 py-1 rounded text-[10px] font-medium border transition ${
-                    amount === v
-                      ? "bg-[#1e3a5f] border-[#3B82F6] text-[#60a5fa]"
-                      : "bg-[#13161e] text-gray-400 border-white/[0.07] hover:bg-white/5"
-                  }`}
-                >
-                  ${v}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {tab === "mpesa" && (
-            <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                M-Pesa Phone Number
-              </label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="07XX XXX XXX"
-                className="w-full px-4 py-3 rounded-xl bg-[#13161e] border border-white/[0.07] text-white text-sm focus:outline-none focus:border-[#3B82F6]/50"
-              />
-              <p className="text-[10px] text-gray-500 mt-1.5">
-                You&apos;ll receive an STK push to complete payment
+          {currentGateway && !currentGateway.enabled ? (
+            <div className="py-8 text-center space-y-2">
+              <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />
+              <p className="text-sm font-semibold text-white">{currentGateway.name} is currently offline</p>
+              <p className="text-xs text-gray-400 max-w-xs mx-auto">
+                This deposit method has been temporarily paused by the administrator. Please select another method.
               </p>
             </div>
-          )}
-
-          {tab === "crypto" && cryptoResult && cryptoResult.status === "pending" && (
-            <div className="rounded-xl bg-[#13161e] border border-white/[0.07] p-4 space-y-3">
-              <p className="text-xs text-gray-400">
-                Send <span className="text-white font-bold">${cryptoResult.amount} USDT</span> via
-                TRC20 to:
-              </p>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 text-[10px] text-emerald-400 break-all">
-                  {cryptoResult.address}
-                </code>
-                <button
-                  onClick={() => copyAddress(cryptoResult.address)}
-                  className="p-2 rounded-lg hover:bg-white/5 text-gray-400"
-                >
-                  {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-                </button>
+          ) : (
+            <>
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                  Amount (USD) <span className="text-gray-400 font-semibold">· min ${activeMinDeposit.toFixed(2)}</span>
+                  {currentGateway?.maxDeposit && (
+                    <span className="text-gray-500"> · max ${currentGateway.maxDeposit.toFixed(2)}</span>
+                  )}
+                </label>
+                <input
+                  type="number"
+                  min={activeMinDeposit}
+                  max={currentGateway?.maxDeposit ?? 100000}
+                  step="0.01"
+                  value={amount}
+                  onChange={(e) => setAmount(Number(e.target.value))}
+                  className="w-full px-4 py-3 rounded-xl bg-[#13161e] border border-white/[0.07] text-white text-sm focus:outline-none focus:border-[#3B82F6]/50"
+                />
+                <div className="flex gap-1.5 mt-2">
+                  {[10, 25, 50, 100, 200].map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => setAmount(v)}
+                      className={`flex-1 py-1 rounded text-[10px] font-medium border transition ${
+                        amount === v
+                          ? "bg-[#1e3a5f] border-[#3B82F6] text-[#60a5fa]"
+                          : "bg-[#13161e] text-gray-400 border-white/[0.07] hover:bg-white/5"
+                      }`}
+                    >
+                      ${v}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <p className="text-[10px] text-gray-500">Ref: {cryptoResult.reference}</p>
-              <input
-                type="text"
-                value={txHash}
-                onChange={(e) => setTxHash(e.target.value)}
-                placeholder="Paste transaction hash"
-                className="w-full px-3 py-2 rounded-lg bg-[#1c2030] border border-white/[0.07] text-white text-xs"
-              />
-              <button
-                onClick={confirmCrypto}
-                disabled={loading || txHash.length < 10}
-                className="w-full py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-40"
-                style={{ background: "#3B82F6" }}
-              >
-                Confirm Payment
-              </button>
-            </div>
-          )}
 
-          {tab === "card" && (
-            <div>
-              {process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ? (
-                <PayPalScriptProvider
-                  options={{
-                    clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID,
-                    currency: "USD",
-                    intent: "capture",
-                  }}
-                >
-                  <PayPalButtons
-                    style={{ layout: "vertical" }}
-                    createOrder={handlePaypalCreateOrder}
-                    onApprove={handlePaypalApprove}
-                    onCancel={() => { setError(""); setMessage("Card payment cancelled"); }}
-                    onError={(err) => {
-                      console.error("PayPal onError:", err);
-                      setError(`Card payment error: ${err instanceof Error ? err.message : String(err)}`);
-                    }}
-                  />
-                </PayPalScriptProvider>
-              ) : (
-                <p className="text-xs text-rose-400">Card payments are not configured</p>
+              {currentGateway?.instructions && (
+                <p className="text-[11px] text-gray-400 bg-white/[0.02] border border-white/[0.05] rounded-xl px-3 py-2">
+                  {currentGateway.instructions}
+                </p>
               )}
-              <p className="text-[10px] text-gray-500 mt-2 text-center">
-                Securely processed by PayPal
-              </p>
-            </div>
-          )}
 
-          {error && <p className="text-xs text-rose-400">{error}</p>}
-          {message && <p className="text-xs text-emerald-400">{message}</p>}
+              {tab === "mpesa" && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                    M-Pesa Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="07XX XXX XXX"
+                    className="w-full px-4 py-3 rounded-xl bg-[#13161e] border border-white/[0.07] text-white text-sm focus:outline-none focus:border-[#3B82F6]/50"
+                  />
+                  <p className="text-[10px] text-gray-500 mt-1.5">
+                    You&apos;ll receive an STK push to complete payment in Kenyan Shillings (KES)
+                  </p>
+                </div>
+              )}
 
-          {!cryptoResult && tab !== "card" && (
-            <button
-              onClick={handleDeposit}
-              disabled={loading || amount < minDeposit}
-              className="w-full py-3 rounded-xl text-white font-semibold text-sm disabled:opacity-40"
-              style={{ background: "#3B82F6" }}
-            >
-              {loading ? "Processing..." : `Deposit $${amount}`}
-            </button>
+              {tab === "crypto" && cryptoResult && cryptoResult.status === "pending" && (
+                <div className="rounded-xl bg-[#13161e] border border-white/[0.07] p-4 space-y-3">
+                  <p className="text-xs text-gray-400">
+                    Send <span className="text-white font-bold">${cryptoResult.amount} USDT</span> via
+                    TRC20 to:
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-[10px] text-emerald-400 break-all">
+                      {cryptoResult.address}
+                    </code>
+                    <button
+                      onClick={() => copyAddress(cryptoResult.address)}
+                      className="p-2 rounded-lg hover:bg-white/5 text-gray-400"
+                    >
+                      {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-gray-500">Ref: {cryptoResult.reference}</p>
+                  <input
+                    type="text"
+                    value={txHash}
+                    onChange={(e) => setTxHash(e.target.value)}
+                    placeholder="Paste transaction hash"
+                    className="w-full px-3 py-2 rounded-lg bg-[#1c2030] border border-white/[0.07] text-white text-xs"
+                  />
+                  <button
+                    onClick={confirmCrypto}
+                    disabled={loading || txHash.length < 10}
+                    className="w-full py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-40"
+                    style={{ background: "#3B82F6" }}
+                  >
+                    Confirm Payment
+                  </button>
+                </div>
+              )}
+
+              {tab === "card" && (
+                <div>
+                  {dynamicPaypalClientId ? (
+                    <PayPalScriptProvider
+                      options={{
+                        clientId: dynamicPaypalClientId,
+                        currency: "USD",
+                        intent: "capture",
+                      }}
+                    >
+                      <PayPalButtons
+                        style={{ layout: "vertical" }}
+                        createOrder={handlePaypalCreateOrder}
+                        onApprove={handlePaypalApprove}
+                        onCancel={() => { setError(""); setMessage("Card payment cancelled"); }}
+                        onError={(err) => {
+                          console.error("PayPal onError:", err);
+                          setError(`Card payment error: ${err instanceof Error ? err.message : String(err)}`);
+                        }}
+                      />
+                    </PayPalScriptProvider>
+                  ) : (
+                    <p className="text-xs text-rose-400">Card payments are not configured</p>
+                  )}
+                  <p className="text-[10px] text-gray-500 mt-2 text-center">
+                    Securely processed by PayPal
+                  </p>
+                </div>
+              )}
+
+              {error && <p className="text-xs text-rose-400">{error}</p>}
+              {message && <p className="text-xs text-emerald-400">{message}</p>}
+
+              {!cryptoResult && tab !== "card" && (
+                <button
+                  onClick={handleDeposit}
+                  disabled={loading || amount < activeMinDeposit}
+                  className="w-full py-3 rounded-xl text-white font-semibold text-sm disabled:opacity-40"
+                  style={{ background: "#3B82F6" }}
+                >
+                  {loading ? "Processing..." : `Deposit $${amount}`}
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>

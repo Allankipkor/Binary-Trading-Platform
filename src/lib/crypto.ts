@@ -1,22 +1,54 @@
-export function getUsdtDepositAddress(): string | null {
-  return process.env.CRYPTO_USDT_ADDRESS ?? null;
+import { getGateway, type CryptoConfig } from "./gateways";
+
+export async function getCryptoSettings(): Promise<{
+  enabled: boolean;
+  address: string | null;
+  network: string;
+  tronGridApiKey: string | null;
+  autoConfirm: boolean;
+}> {
+  try {
+    const gw = await getGateway("crypto");
+    const cfg = gw.parsedConfig as CryptoConfig;
+
+    return {
+      enabled: gw.enabled,
+      address: cfg.address || process.env.CRYPTO_USDT_ADDRESS || null,
+      network: cfg.network || "TRC20",
+      tronGridApiKey: cfg.tronGridApiKey || process.env.TRONGRID_API_KEY || null,
+      autoConfirm: cfg.autoConfirm !== undefined ? cfg.autoConfirm : process.env.CRYPTO_AUTO_CONFIRM === "true",
+    };
+  } catch {
+    return {
+      enabled: true,
+      address: process.env.CRYPTO_USDT_ADDRESS || null,
+      network: "TRC20",
+      tronGridApiKey: process.env.TRONGRID_API_KEY || null,
+      autoConfirm: process.env.CRYPTO_AUTO_CONFIRM === "true",
+    };
+  }
 }
 
-export function isCryptoConfigured(): boolean {
-  return !!getUsdtDepositAddress();
+export async function getUsdtDepositAddress(): Promise<string | null> {
+  const settings = await getCryptoSettings();
+  return settings.address;
 }
 
-export function isAutoConfirmEnabled(): boolean {
-  return process.env.CRYPTO_AUTO_CONFIRM === "true";
+export async function isCryptoConfigured(): Promise<boolean> {
+  const settings = await getCryptoSettings();
+  return !!(settings.address && settings.enabled);
+}
+
+export async function isAutoConfirmEnabled(): Promise<boolean> {
+  const settings = await getCryptoSettings();
+  return settings.autoConfirm;
 }
 
 export function generateDepositReference(): string {
   return `OM${Date.now().toString(36).toUpperCase()}`;
 }
 
-// Official USDT TRC20 contract address on TRON mainnet. This is a fixed,
-// well-known constant — not configurable — since pointing at a different
-// contract would mean accepting a token that merely LOOKS like USDT.
+// Official USDT TRC20 contract address on TRON mainnet.
 const USDT_TRC20_CONTRACT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
 const USDT_DECIMALS = 6;
 
@@ -34,7 +66,7 @@ interface TronGridTrc20Transfer {
   from: string;
   to: string;
   type: string;
-  value: string; // amount in the token's smallest unit (sun-equivalent), as a string
+  value: string;
 }
 
 interface TronGridTrc20Response {
@@ -52,25 +84,19 @@ export interface VerifyUsdtTransferResult {
 /**
  * Verifies that a given transaction hash corresponds to a REAL, on-chain
  * USDT (TRC20) transfer of at least `minAmount` to our own deposit address.
- *
- * This exists because the crypto deposit confirmation flow previously
- * trusted whatever string the user typed into the txHash field — any
- * 10+ character value was accepted and credited immediately, with zero
- * verification against the actual TRON blockchain. This function is what
- * replaces that blind trust with a real check, using TronGrid's public,
- * free, read-only API (no private key or wallet access needed — this only
- * ever reads the chain, never signs or sends anything).
  */
 export async function verifyUsdtTransfer(params: {
   txHash: string;
   minAmount: number;
 }): Promise<VerifyUsdtTransferResult> {
-  const ourAddress = getUsdtDepositAddress();
+  const settings = await getCryptoSettings();
+  const ourAddress = settings.address;
+
   if (!ourAddress) {
     return { verified: false, reason: "Crypto deposits not configured" };
   }
 
-  const apiKey = process.env.TRONGRID_API_KEY; // optional but recommended — see note below
+  const apiKey = settings.tronGridApiKey || process.env.TRONGRID_API_KEY;
 
   try {
     const url = new URL(`${TRONGRID_BASE_URL}/v1/accounts/${ourAddress}/transactions/trc20`);
@@ -94,19 +120,12 @@ export async function verifyUsdtTransfer(params: {
 
     const match = data.data.find((t) => t.transaction_id === params.txHash);
     if (!match) {
-      // Not found among our most recent 50 confirmed incoming USDT
-      // transfers. Either it hasn't confirmed yet (TRON blocks are ~3s, so
-      // this should usually be quick), it's not actually a transfer to our
-      // address, or it's not USDT TRC20 at all.
       return {
         verified: false,
         reason: "Transaction not found among confirmed USDT transfers to our address. If you just sent it, wait a minute and try again.",
       };
     }
 
-    // Belt-and-suspenders: confirm the contract really is USDT, even though
-    // we already filtered by contract_address — defends against a future
-    // change to this function accidentally dropping that filter.
     if (match.token_info.address !== USDT_TRC20_CONTRACT) {
       return { verified: false, reason: "Transaction is not a USDT TRC20 transfer" };
     }
@@ -118,8 +137,6 @@ export async function verifyUsdtTransfer(params: {
       return { verified: false, reason: "Could not parse the on-chain transfer amount" };
     }
 
-    // Allow the sender to have sent slightly more than requested (rounding,
-    // network fee handling on their side) but never less.
     if (amount < params.minAmount - 0.000001) {
       return {
         verified: false,

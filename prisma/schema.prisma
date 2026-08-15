@@ -91,3 +91,15 @@ model Message {
   @@index([userId])
 }
 
+model PaymentGateway {
+  id           String   @id // "mpesa" | "crypto" | "card"
+  name         String
+  enabled      Boolean  @default(true)
+  minDeposit   Float?
+  maxDeposit   Float?
+  config       String?  // JSON config for credentials, rates, addresses, and toggles
+  instructions String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
