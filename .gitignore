@@ -18,6 +18,12 @@
 # production
 /build
 
+# android
+.gradle/
+android/.gradle/
+android/**/build/
+android/app/build/
+
 # misc
 .DS_Store
 *.pem
