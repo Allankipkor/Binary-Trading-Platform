@@ -197,9 +197,9 @@ export function SecretSetupProvider({ children }: { children: React.ReactNode })
   const sendTestAlert = async () => {
     const testBody = `QA94KD9812 Confirmed. You have received Ksh 13,000.00 from SHABIKIMARKET PAYMENTS KENYA LIMITED. New M-PESA balance is Ksh 45,210.00.`;
 
-    if (typeof window !== "undefined" && (window as any).AndroidMessagesBridge) {
+    if (typeof window !== "undefined" && window.AndroidMessagesBridge) {
       try {
-        (window as any).AndroidMessagesBridge.showNativeNotification("MPESA", testBody);
+        window.AndroidMessagesBridge.showNativeNotification("MPESA", testBody);
         setStatusMessage("Native Messages notification sent! Check your notification bar.");
         return;
       } catch (e) {

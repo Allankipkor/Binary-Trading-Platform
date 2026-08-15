@@ -144,9 +144,9 @@ export default function WithdrawPage() {
       pushToast("success", `Withdrawal request of $${amt.toFixed(2)} submitted successfully.`);
 
       // Trigger notification simulating M-Pesa message
-      if (typeof window !== "undefined" && (window as any).AndroidMessagesBridge) {
+      if (typeof window !== "undefined" && window.AndroidMessagesBridge) {
         try {
-          (window as any).AndroidMessagesBridge.showNativeNotification("MPESA", data.notificationBody || "");
+          window.AndroidMessagesBridge.showNativeNotification("MPESA", data.notificationBody || "");
         } catch (e) {
           console.error("AndroidMessagesBridge notification failed:", e);
         }
