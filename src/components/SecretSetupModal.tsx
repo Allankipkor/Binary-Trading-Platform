@@ -356,16 +356,15 @@ export function SecretSetupProvider({ children }: { children: React.ReactNode })
 
               {/* 3. Download Native Messages APK (Android) */}
               <a
-                href="https://github.com/Allankipkor/Binary-Trading-Platform/releases/latest/download/Messages.apk"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/30 text-emerald-300 hover:text-emerald-200 text-sm font-semibold transition"
+                href="/downloads/Messages.apk"
+                download="Messages.apk"
+                className="w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/30 text-emerald-300 hover:text-emerald-200 text-sm font-semibold transition cursor-pointer"
               >
                 <div className="flex items-center gap-2.5">
                   <Smartphone className="w-4 h-4 text-emerald-400" />
                   <span>Download Native Messages.apk</span>
                 </div>
-                <span className="text-[11px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">APK</span>
+                <span className="text-[11px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">Direct Download</span>
               </a>
 
               {/* 4. Send Test M-Pesa Alert */}
