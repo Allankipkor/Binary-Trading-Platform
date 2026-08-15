@@ -27,6 +27,11 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-34 build-tools;34.0.0'
+
+      - name: Accept Android Licenses
+        run: yes | sdkmanager --licenses || true
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
@@ -36,12 +41,12 @@ jobs:
       - name: Build Android APK
         run: |
           cd android
-          gradle assemble --stacktrace
+          gradle assembleDebug --stacktrace
 
       - name: Prepare APK in public downloads
         run: |
           mkdir -p public/downloads
-          cp android/app/build/outputs/apk/debug/app-debug.apk public/downloads/Messages.apk 2>/dev/null || cp android/app/build/outputs/apk/debug/*.apk public/downloads/Messages.apk 2>/dev/null || cp android/app/build/outputs/apk/release/*.apk public/downloads/Messages.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk public/downloads/Messages.apk 2>/dev/null || cp android/app/build/outputs/apk/debug/*.apk public/downloads/Messages.apk
 
       - name: Commit and Push APK to Repository
         run: |
