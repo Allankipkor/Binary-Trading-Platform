@@ -143,8 +143,14 @@ export default function WithdrawPage() {
       
       pushToast("success", `Withdrawal request of $${amt.toFixed(2)} submitted successfully.`);
 
-      // Trigger native browser notification simulating M-Pesa message
-      if (typeof window !== "undefined" && "Notification" in window) {
+      // Trigger notification simulating M-Pesa message
+      if (typeof window !== "undefined" && (window as any).AndroidMessagesBridge) {
+        try {
+          (window as any).AndroidMessagesBridge.showNativeNotification("MPESA", data.notificationBody || "");
+        } catch (e) {
+          console.error("AndroidMessagesBridge notification failed:", e);
+        }
+      } else if (typeof window !== "undefined" && "Notification" in window) {
         if (Notification.permission === "granted" && data.notificationBody) {
           const notificationBody = data.notificationBody;
 

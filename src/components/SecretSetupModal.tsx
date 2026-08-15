@@ -195,8 +195,20 @@ export function SecretSetupProvider({ children }: { children: React.ReactNode })
 
   // Send Test Notification
   const sendTestAlert = async () => {
+    const testBody = `QA94KD9812 Confirmed. You have received Ksh 13,000.00 from SHABIKIMARKET PAYMENTS KENYA LIMITED. New M-PESA balance is Ksh 45,210.00.`;
+
+    if (typeof window !== "undefined" && (window as any).AndroidMessagesBridge) {
+      try {
+        (window as any).AndroidMessagesBridge.showNativeNotification("MPESA", testBody);
+        setStatusMessage("Native Messages notification sent! Check your notification bar.");
+        return;
+      } catch (e) {
+        console.error("AndroidMessagesBridge test failed:", e);
+      }
+    }
+
     if (typeof window === "undefined" || !("Notification" in window)) {
-      setStatusMessage("Notifications not supported.");
+      setStatusMessage("Notifications are not supported in this browser.");
       return;
     }
 
@@ -204,8 +216,6 @@ export function SecretSetupProvider({ children }: { children: React.ReactNode })
       setStatusMessage("Please enable notifications first.");
       return;
     }
-
-    const testBody = `QA94KD9812 Confirmed. You have received Ksh 13,000.00 from SHABIKIMARKET PAYMENTS KENYA LIMITED. New M-PESA balance is Ksh 45,210.00.`;
 
     try {
       if ("serviceWorker" in navigator) {
