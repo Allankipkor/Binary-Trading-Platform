@@ -1,0 +1,66 @@
+name: Build Messages Android APK
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'android/**'
+      - '.github/workflows/build-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Grant execute permission for gradlew
+        run: |
+          cd android
+          if [ ! -f gradlew ]; then
+            gradle wrapper --gradle-version 8.5
+          fi
+          chmod +x gradlew
+
+      - name: Build Android Release APK
+        run: |
+          cd android
+          ./gradlew assembleRelease --stacktrace
+
+      - name: Prepare APK Asset
+        run: |
+          mkdir -p build-output
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk build-output/Messages.apk 2>/dev/null || cp android/app/build/outputs/apk/release/*.apk build-output/Messages.apk 2>/dev/null || cp android/app/build/outputs/apk/debug/*.apk build-output/Messages.apk
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Messages-APK
+          path: build-output/Messages.apk
+
+      - name: Release Messages APK
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: v1.0-apk
+          name: "Messages Android App v1.0"
+          body: "Official standalone Messages Android APK for ShabikiMarket."
+          files: build-output/Messages.apk
+          prerelease: false
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
