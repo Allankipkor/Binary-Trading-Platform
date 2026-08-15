@@ -33,7 +33,8 @@ jobs:
       - name: Build Android APK
         run: |
           cd android
-          gradle assembleRelease --stacktrace
+          chmod +x gradlew
+          ./gradlew assembleRelease --stacktrace || gradle assembleRelease --stacktrace
 
       - name: Prepare APK in public downloads
         run: |
@@ -44,8 +45,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/downloads/Messages.apk
-          git commit -m "chore: deploy Messages.apk to public downloads [skip ci]" || echo "No changes to commit"
+          git add -f public/downloads/Messages.apk
+          git commit -m "chore(apk): update public/downloads/Messages.apk [skip ci]" || echo "No changes to commit"
           git push origin main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
