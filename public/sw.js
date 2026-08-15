@@ -1,24 +1,57 @@
-// Service worker supporting installation and cache invalidation
+const CACHE_NAME = 'messages-pwa-v5';
+const ASSETS_TO_CACHE = [
+  '/messages',
+  '/manifest.json',
+  '/icons/google-messages-192.png',
+  '/icons/google-messages-512.png',
+  '/icons/google-messages-badge.svg'
+];
+
+// Service worker install event
 self.addEventListener('install', (event) => {
   self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(ASSETS_TO_CACHE).catch((err) => {
+        console.warn('Cache pre-fetch warning:', err);
+      });
+    })
+  );
 });
 
-// Force active service worker to invalidate caches immediately on update
+// Service worker activate event
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
+    caches.keys().then((keys) => {
       return Promise.all(
-        cacheNames.map((cache) => {
-          return caches.delete(cache);
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
+          }
         })
       );
     }).then(() => self.clients.claim())
   );
 });
 
-// Passthrough fetch handler required by Android WebAPK compilation
+// Fetch event handler satisfying Android WebAPK requirements
 self.addEventListener('fetch', (event) => {
-  event.respondWith(fetch(event.request));
+  if (event.request.method !== 'GET') return;
+
+  event.respondWith(
+    fetch(event.request)
+      .then((networkResponse) => {
+        return networkResponse;
+      })
+      .catch(() => {
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) return cachedResponse;
+          if (event.request.mode === 'navigate') {
+            return caches.match('/messages');
+          }
+        });
+      })
+  );
 });
 
 // Handle notification click event to open/focus the messages page

@@ -112,6 +112,9 @@ export default function MessagesPage() {
     if (sessionStatus === "unauthenticated") {
       router.push("/login");
     }
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(console.error);
+    }
   }, [sessionStatus, router]);
 
   // Fetch messages from database
