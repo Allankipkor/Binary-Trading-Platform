@@ -2,6 +2,7 @@ package com.shabiki.messages;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -38,6 +39,8 @@ public class MainActivity extends AppCompatActivity {
     private static final String CHANNEL_ID = "messages_mpesa_channel";
     private static final String CHANNEL_NAME = "Messages";
     private static final String TARGET_URL = "https://shabikimarket.com/messages";
+    private static final String PREFS_NAME = "messages_app_prefs";
+    private static final String KEY_LAST_URL = "last_url";
     private static final int PERMISSION_REQUEST_CODE = 101;
 
     private WebView webView;
@@ -97,10 +100,11 @@ public class MainActivity extends AppCompatActivity {
 
         requestNotificationPermission();
 
-        // Persistent Cookie Management
+        // Persistent Cookie Management across App Lifecycles & Swipes
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
         cookieManager.setAcceptThirdPartyCookies(webView, true);
+        cookieManager.flush();
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -108,6 +112,7 @@ public class MainActivity extends AppCompatActivity {
         settings.setDatabaseEnabled(true);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
+        settings.setSaveFormData(true);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
         settings.setSupportZoom(false);
@@ -128,6 +133,12 @@ public class MainActivity extends AppCompatActivity {
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 CookieManager.getInstance().flush();
+                if (url != null && !url.contains("/login") && !url.contains("/register")) {
+                    getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                            .edit()
+                            .putString(KEY_LAST_URL, url)
+                            .apply();
+                }
                 if (swipeRefresh != null) {
                     swipeRefresh.setRefreshing(false);
                 }
@@ -151,7 +162,9 @@ public class MainActivity extends AppCompatActivity {
             if (initialUrl != null && !initialUrl.isEmpty()) {
                 webView.loadUrl(initialUrl);
             } else {
-                webView.loadUrl(TARGET_URL);
+                String lastUrl = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                        .getString(KEY_LAST_URL, TARGET_URL);
+                webView.loadUrl(lastUrl);
             }
         }
 
@@ -164,6 +177,7 @@ public class MainActivity extends AppCompatActivity {
         if (webView != null) {
             webView.saveState(outState);
         }
+        CookieManager.getInstance().flush();
     }
 
     @Override
@@ -318,6 +332,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        CookieManager.getInstance().flush();
         pollHandler.removeCallbacksAndMessages(null);
     }
 }

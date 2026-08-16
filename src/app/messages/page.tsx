@@ -110,7 +110,7 @@ export default function MessagesPage() {
 
   useEffect(() => {
     if (sessionStatus === "unauthenticated") {
-      router.push("/login");
+      router.push("/login?callbackUrl=/messages");
     }
     if (typeof window !== "undefined" && "serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch(console.error);
