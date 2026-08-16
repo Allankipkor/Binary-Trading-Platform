@@ -20,6 +20,7 @@ export async function GET() {
         balance: true,
         demoBalance: true,
         manipulation: true,
+        winRate: true,
         createdAt: true,
       },
     });
@@ -39,13 +40,13 @@ export async function PATCH(req: Request) {
 
   try {
     const body = await req.json();
-    const { userId, balance, demoBalance, role, manipulation } = body;
+    const { userId, balance, demoBalance, role, manipulation, winRate } = body;
 
     if (!userId) {
       return NextResponse.json({ error: "User ID is required" }, { status: 400 });
     }
 
-    const data: { balance?: number; demoBalance?: number; role?: string; manipulation?: string } = {};
+    const data: { balance?: number; demoBalance?: number; role?: string; manipulation?: string; winRate?: number | null } = {};
     if (balance !== undefined) data.balance = parseFloat(balance);
     if (demoBalance !== undefined) data.demoBalance = parseFloat(demoBalance);
     if (role !== undefined) {
@@ -60,6 +61,16 @@ export async function PATCH(req: Request) {
       }
       data.manipulation = manipulation;
     }
+    if (winRate !== undefined) {
+      if (winRate === null || winRate === "") {
+        data.winRate = null;
+      } else {
+        const parsed = parseFloat(winRate);
+        if (!isNaN(parsed) && parsed >= 1 && parsed <= 100) {
+          data.winRate = parsed;
+        }
+      }
+    }
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
@@ -72,6 +83,7 @@ export async function PATCH(req: Request) {
         balance: true,
         demoBalance: true,
         manipulation: true,
+        winRate: true,
       },
     });
 

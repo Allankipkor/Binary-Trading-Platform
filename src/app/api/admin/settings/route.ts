@@ -14,6 +14,8 @@ export async function GET() {
     });
     return NextResponse.json({
       manipulation: setting?.manipulation ?? "normal",
+      forceWinRate: setting?.forceWinRate ?? 85.0,
+      forceLossRate: setting?.forceLossRate ?? 85.0,
       minDeposit: setting?.minDeposit ?? 5.0,
       minWithdrawal: setting?.minWithdrawal ?? 100.0,
       minStake: setting?.minStake ?? 5.0,
@@ -32,15 +34,38 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { manipulation, minDeposit, minWithdrawal, minStake } = body;
+    const { manipulation, forceWinRate, forceLossRate, minDeposit, minWithdrawal, minStake } = body;
 
-    const dataToUpdate: { manipulation?: string; minDeposit?: number; minWithdrawal?: number; minStake?: number } = {};
+    const dataToUpdate: {
+      manipulation?: string;
+      forceWinRate?: number;
+      forceLossRate?: number;
+      minDeposit?: number;
+      minWithdrawal?: number;
+      minStake?: number;
+    } = {};
 
     if (manipulation !== undefined) {
       if (!["normal", "force_win", "force_loss"].includes(manipulation)) {
         return NextResponse.json({ error: "Invalid manipulation mode" }, { status: 400 });
       }
       dataToUpdate.manipulation = manipulation;
+    }
+
+    if (forceWinRate !== undefined) {
+      const parsedRate = parseFloat(forceWinRate);
+      if (isNaN(parsedRate) || parsedRate < 1 || parsedRate > 100) {
+        return NextResponse.json({ error: "Invalid win percentage (must be 1-100)" }, { status: 400 });
+      }
+      dataToUpdate.forceWinRate = parsedRate;
+    }
+
+    if (forceLossRate !== undefined) {
+      const parsedRate = parseFloat(forceLossRate);
+      if (isNaN(parsedRate) || parsedRate < 1 || parsedRate > 100) {
+        return NextResponse.json({ error: "Invalid loss percentage (must be 1-100)" }, { status: 400 });
+      }
+      dataToUpdate.forceLossRate = parsedRate;
     }
 
     if (minDeposit !== undefined) {
@@ -72,6 +97,8 @@ export async function POST(req: Request) {
       create: { 
         id: "default", 
         manipulation: manipulation ?? "normal",
+        forceWinRate: forceWinRate !== undefined ? parseFloat(forceWinRate) : 85.0,
+        forceLossRate: forceLossRate !== undefined ? parseFloat(forceLossRate) : 85.0,
         minDeposit: minDeposit !== undefined ? parseFloat(minDeposit) : 5.0,
         minWithdrawal: minWithdrawal !== undefined ? parseFloat(minWithdrawal) : 100.0,
         minStake: minStake !== undefined ? parseFloat(minStake) : 5.0,
@@ -89,6 +116,8 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       manipulation: setting.manipulation,
+      forceWinRate: setting.forceWinRate,
+      forceLossRate: setting.forceLossRate,
       minDeposit: setting.minDeposit,
       minWithdrawal: setting.minWithdrawal,
       minStake: setting.minStake,

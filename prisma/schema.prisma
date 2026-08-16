@@ -17,6 +17,7 @@ model User {
   demoBalance  Float         @default(10000)
   role         String        @default("user")
   manipulation String        @default("normal") // "normal" | "force_win" | "force_loss"
+  winRate      Float?        // Optional custom win rate percentage (1-100)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   trades       Trade[]
@@ -73,6 +74,8 @@ model PriceFeed {
 model MarketSetting {
   id            String   @id @default("default")
   manipulation  String   @default("normal") // "normal" | "force_win" | "force_loss"
+  forceWinRate  Float    @default(85.0)     // percentage of trades to force win (1-100)
+  forceLossRate Float    @default(85.0)     // percentage of trades to force loss (1-100)
   minDeposit    Float    @default(5.0)
   minWithdrawal Float    @default(100.0)
   minStake      Float    @default(5.0)
@@ -102,4 +105,3 @@ model PaymentGateway {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
-
