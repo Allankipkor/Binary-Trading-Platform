@@ -37,9 +37,22 @@ export async function POST(req: Request) {
     const isAdmin = ADMIN_EMAILS.includes(email.toLowerCase().trim());
     const role = isAdmin ? "admin" : "user";
 
+    // Fetch the current default manipulation state configured in the Admin Control Center
+    const defaultSetting = await prisma.marketSetting.findUnique({
+      where: { id: "default" },
+    });
+    const defaultManipulation = defaultSetting?.manipulation ?? "normal";
+
     const passwordHash = await hashPassword(password);
     const user = await prisma.user.create({
-      data: { email, passwordHash, name, phone, role },
+      data: {
+        email,
+        passwordHash,
+        name,
+        phone,
+        role,
+        manipulation: defaultManipulation,
+      },
       select: { id: true, email: true, name: true, role: true },
     });
 

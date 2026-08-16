@@ -451,21 +451,21 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
           return p;
         }
 
-        const won = p.direction === "up" ? price > p.openPrice : price < p.openPrice;
-        const profit = won ? p.payout - p.stake : -p.stake;
+        // Demo trades: Always resolve as WIN as requested ("all demos should aalways be on win mode")
+        const won = true;
+        const profit = +(p.payout - p.stake).toFixed(2);
 
         // Demo: stake was already deducted at placement.
         // On win, credit back the full payout (stake + profit).
-        // On loss, nothing more to deduct — stake already gone.
-        setDemoBalance((b) => +(b + (won ? p.payout : 0)).toFixed(2));
+        setDemoBalance((b) => +(b + p.payout).toFixed(2));
 
         setSettledQueue((q) => [...q, { id: p.id, profit }]);
         pushToast({
-          kind: profit >= 0 ? "closed-profit" : "closed-loss",
+          kind: "closed-profit",
           asset: p.asset,
           amount: profit,
         });
-        return { ...p, status: won ? "won" : "lost", profit };
+        return { ...p, status: "won", profit };
       })
     );
   }, [price, isAuthenticated, syncFromApi, pushToast]);
