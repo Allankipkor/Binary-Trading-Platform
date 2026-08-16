@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { SessionProvider } from "@/components/providers/SessionProvider";
 import { SecretSetupProvider } from "@/components/SecretSetupModal";
+import { ThemeProvider } from "@/context/ThemeContext";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -28,7 +29,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.className} antialiased`}>
         <SessionProvider>
-          <SecretSetupProvider>{children}</SecretSetupProvider>
+          <ThemeProvider>
+            <SecretSetupProvider>{children}</SecretSetupProvider>
+          </ThemeProvider>
         </SessionProvider>
       </body>
     </html>

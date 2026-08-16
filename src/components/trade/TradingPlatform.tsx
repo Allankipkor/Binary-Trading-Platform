@@ -23,6 +23,7 @@ import {
   ShieldCheck,
   ShieldAlert,
   Sparkles,
+  Sun,
   TrendingUp,
   Wallet,
   X,
@@ -33,6 +34,7 @@ import { ASSETS, type Asset } from "@/lib/assets";
 import { PositionsPanel, type Position } from "./PositionsPanel";
 import { OrderPanel, type ContractType } from "./OrderPanel";
 import { useSecretSetup } from "../SecretSetupModal";
+import { useTheme } from "@/context/ThemeContext";
 
 interface TradingPlatformProps {
   forceDemo?: boolean;
@@ -110,6 +112,7 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
   const [profile, setProfile] = useState<{ name: string | null; email: string; phone: string | null } | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [appliedSignal, setAppliedSignal] = useState<{ digit: number; nonce: number } | null>(null);
+  const { isLight, toggleTheme } = useTheme();
 
   const handleUseSignal = (
     market: "Even/Odd" | "Over/Under" | "Match/Differ",
@@ -287,11 +290,11 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
     const range = max - min || 1;
 
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = "#070809";
+    ctx.fillStyle = isLight ? "#ffffff" : "#070809";
     ctx.fillRect(0, 0, w, h);
 
     // Grid lines
-    ctx.strokeStyle = "rgba(255,255,255,0.03)";
+    ctx.strokeStyle = isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.03)";
     ctx.lineWidth = 1;
     for (let i = 0; i < 5; i++) {
       const y = padding + ((h - padding * 2) / 4) * i;
@@ -375,17 +378,17 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
     ctx.restore();
 
     // Border
-    ctx.strokeStyle = "rgba(255,255,255,0.06)";
+    ctx.strokeStyle = isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.06)";
     ctx.lineWidth = 1;
     ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
-  }, [priceHistory, price]);
+  }, [priceHistory, price, isLight]);
 
   // Draw to both canvases (whichever is actually mounted/visible) whenever
-  // data changes. (Theme-based redraw removed — theme toggle is paused for now.)
+  // data changes.
   useEffect(() => {
     drawChartOnCanvas(desktopCanvasRef.current);
     drawChartOnCanvas(mobileCanvasRef.current);
-  }, [drawChartOnCanvas]);
+  }, [drawChartOnCanvas, isLight]);
 
   // Persist demo balance changes to the server (authenticated users only)
   const demoBalanceRef = useRef(demoBalance);
@@ -941,15 +944,18 @@ export function TradingPlatform({ forceDemo = false }: TradingPlatformProps) {
                   <ChevronRight className="w-4 h-4 text-purple-400/60" />
                 </button>
 
-                <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06]">
+                <button
+                  onClick={toggleTheme}
+                  className="w-full flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06] hover:bg-white/[0.03] transition text-left cursor-pointer"
+                >
                   <span className="flex items-center gap-3 text-sm font-semibold text-white">
-                    <Moon className="w-5 h-5 text-gray-400" />
-                    Dark theme
+                    {isLight ? <Sun className="w-5 h-5 text-amber-500" /> : <Moon className="w-5 h-5 text-gray-400" />}
+                    {isLight ? "Light theme" : "Dark theme"}
                   </span>
-                  <div className="w-11 h-6 rounded-full bg-[#3B82F6] relative cursor-not-allowed opacity-80" title="Always on">
-                    <span className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-white" />
+                  <div className={`w-11 h-6 rounded-full relative transition-colors ${isLight ? "bg-amber-500" : "bg-[#3B82F6]"}`}>
+                    <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all shadow-sm ${isLight ? "right-0.5" : "left-0.5"}`} />
                   </div>
-                </div>
+                </button>
 
                 <button
                   onClick={() => { setNavMenuOpen(false); router.push("/support"); }}

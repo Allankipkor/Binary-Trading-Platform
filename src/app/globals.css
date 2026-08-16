@@ -71,7 +71,6 @@ body {
     font-size: 16px !important;
   }
 }
-/* Add these to your existing src/app/globals.css */
 
 @keyframes slideDown {
   from {
@@ -87,4 +86,161 @@ body {
 @keyframes fadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
+}
+
+/* =========================================================
+   LIGHT MODE DESIGN SYSTEM
+   Carefully calibrated for high contrast, no invisible elements
+   ========================================================= */
+
+html.light-mode {
+  color-scheme: light;
+}
+
+html.light-mode body {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+/* Base Surfaces & Dark Container overrides */
+html.light-mode .bg-\[\#070809\],
+html.light-mode .bg-\[\#0a0d14\],
+html.light-mode .bg-\[\#0e121d\],
+html.light-mode .bg-\[\#13161e\],
+html.light-mode .bg-\[\#141822\],
+html.light-mode .bg-\[\#141a29\],
+html.light-mode .bg-\[\#1c2030\],
+html.light-mode .bg-\[\#1a1e2e\],
+html.light-mode .bg-\[\#181b26\],
+html.light-mode .bg-\[\#161a24\],
+html.light-mode .bg-\[\#161922\],
+html.light-mode .bg-\[\#121620\],
+html.light-mode .bg-\[\#0b0e17\],
+html.light-mode .bg-\[\#11141d\],
+html.light-mode .bg-black {
+  background-color: #ffffff !important;
+}
+
+/* Header & Nav semi-transparent blur backgrounds */
+html.light-mode .bg-\[\#0e121d\]\/95,
+html.light-mode .bg-\[\#0e121d\]\/90,
+html.light-mode .bg-\[\#0e121d\]\/80,
+html.light-mode .bg-\[\#070809\]\/90,
+html.light-mode .bg-\[\#13161e\]\/90,
+html.light-mode .bg-\[\#141a29\]\/95 {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* Sub-card & Item backgrounds */
+html.light-mode .bg-white\/\[0\.02\],
+html.light-mode .bg-white\/\[0\.03\],
+html.light-mode .bg-white\/\[0\.04\],
+html.light-mode .bg-white\/\[0\.05\],
+html.light-mode .bg-white\/\[0\.06\],
+html.light-mode .bg-white\/\[0\.07\],
+html.light-mode .bg-white\/\[0\.08\],
+html.light-mode .bg-white\/5,
+html.light-mode .bg-white\/10 {
+  background-color: #f1f5f9 !important;
+}
+
+/* Hover effects */
+html.light-mode .hover\:bg-white\/\[0\.02\]:hover,
+html.light-mode .hover\:bg-white\/\[0\.03\]:hover,
+html.light-mode .hover\:bg-white\/\[0\.04\]:hover,
+html.light-mode .hover\:bg-white\/\[0\.05\]:hover,
+html.light-mode .hover\:bg-white\/\[0\.08\]:hover,
+html.light-mode .hover\:bg-white\/\[0\.15\]:hover,
+html.light-mode .hover\:bg-white\/5:hover,
+html.light-mode .hover\:bg-white\/10:hover {
+  background-color: #e2e8f0 !important;
+}
+
+/* Text Hierarchy & Contrast */
+html.light-mode .text-white {
+  color: #0f172a !important;
+}
+
+html.light-mode .text-gray-100 {
+  color: #1e293b !important;
+}
+
+html.light-mode .text-gray-200,
+html.light-mode .text-gray-300 {
+  color: #334155 !important;
+}
+
+html.light-mode .text-gray-400,
+html.light-mode .text-gray-500 {
+  color: #64748b !important;
+}
+
+/* CRITICAL: Keep white text on colored solid action buttons & pills */
+html.light-mode button[class*="bg-emerald-"],
+html.light-mode button[class*="bg-rose-"],
+html.light-mode button[class*="bg-green-"],
+html.light-mode button[class*="bg-red-"],
+html.light-mode button[class*="bg-blue-"],
+html.light-mode button[class*="bg-[#3B82F6]"],
+html.light-mode button[class*="bg-[#22c55e]"],
+html.light-mode button[class*="bg-[#ef4444]"],
+html.light-mode button[class*="bg-purple-"],
+html.light-mode button[class*="bg-amber-"],
+html.light-mode a[class*="bg-emerald-"],
+html.light-mode a[class*="bg-rose-"],
+html.light-mode a[class*="bg-green-"],
+html.light-mode a[class*="bg-red-"],
+html.light-mode a[class*="bg-blue-"],
+html.light-mode a[class*="bg-[#3B82F6]"],
+html.light-mode a[class*="bg-[#22c55e]"],
+html.light-mode a[class*="bg-[#ef4444]"],
+html.light-mode a[class*="bg-purple-"],
+html.light-mode .text-white-force,
+html.light-mode [class*="bg-emerald-"] .text-white,
+html.light-mode [class*="bg-rose-"] .text-white,
+html.light-mode [class*="bg-green-"] .text-white,
+html.light-mode [class*="bg-red-"] .text-white,
+html.light-mode [class*="bg-blue-"] .text-white,
+html.light-mode [class*="bg-[#3B82F6]"] .text-white,
+html.light-mode [class*="bg-[#22c55e]"] .text-white,
+html.light-mode [class*="bg-[#ef4444]"] .text-white,
+html.light-mode [class*="bg-purple-"] .text-white,
+html.light-mode [class*="bg-amber-"] .text-white {
+  color: #ffffff !important;
+}
+
+/* Borders & Dividers */
+html.light-mode .border-white\/\[0\.04\],
+html.light-mode .border-white\/\[0\.05\],
+html.light-mode .border-white\/\[0\.06\],
+html.light-mode .border-white\/\[0\.07\],
+html.light-mode .border-white\/\[0\.08\],
+html.light-mode .border-white\/10,
+html.light-mode .border-white\/5,
+html.light-mode .border-white\/20,
+html.light-mode .border-gray-800,
+html.light-mode .border-gray-700 {
+  border-color: #e2e8f0 !important;
+}
+
+/* Inputs, Selects, Textareas in Light Mode */
+html.light-mode input:not([type="checkbox"]):not([type="radio"]),
+html.light-mode select,
+html.light-mode textarea {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html.light-mode input::placeholder,
+html.light-mode textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Shadows for elevated cards in light mode */
+html.light-mode .bg-\[\#141822\],
+html.light-mode .bg-\[\#141a29\],
+html.light-mode .bg-\[\#1c2030\],
+html.light-mode .bg-\[\#181b26\] {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
 }
