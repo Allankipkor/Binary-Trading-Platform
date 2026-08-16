@@ -15,7 +15,7 @@ export function Footer() {
               className="text-sm font-extrabold tracking-tight select-none cursor-pointer"
             >
               <span className="text-[#3B82F6]">SHABIKI</span>
-              <span className="text-white">MARKET</span>
+              <span className="text-slate-900 dark:text-white transition-colors">MARKET</span>
             </span>
           </div>
           <div className="flex items-center gap-5 text-xs text-gray-500">

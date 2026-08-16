@@ -22,20 +22,28 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("dark");
   const [mounted, setMounted] = useState(false);
 
+  const applyTheme = (t: Theme) => {
+    if (t === "light") {
+      document.documentElement.classList.add("light-mode", "light");
+      document.documentElement.classList.remove("dark");
+    } else {
+      document.documentElement.classList.add("dark");
+      document.documentElement.classList.remove("light-mode", "light");
+    }
+  };
+
   useEffect(() => {
     setMounted(true);
     try {
       const saved = localStorage.getItem("app_theme") as Theme | null;
       if (saved === "light" || saved === "dark") {
         setThemeState(saved);
-        if (saved === "light") {
-          document.documentElement.classList.add("light-mode");
-        } else {
-          document.documentElement.classList.remove("light-mode");
-        }
+        applyTheme(saved);
+      } else {
+        applyTheme("dark");
       }
     } catch {
-      // localStorage not accessible
+      applyTheme("dark");
     }
   }, []);
 
@@ -44,11 +52,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     try {
       localStorage.setItem("app_theme", newTheme);
     } catch {}
-    if (newTheme === "light") {
-      document.documentElement.classList.add("light-mode");
-    } else {
-      document.documentElement.classList.remove("light-mode");
-    }
+    applyTheme(newTheme);
   };
 
   const toggleTheme = () => {
