@@ -97,8 +97,10 @@ public class MainActivity extends AppCompatActivity {
 
         requestNotificationPermission();
 
-        CookieManager.getInstance().setAcceptCookie(true);
-        CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
+        // Persistent Cookie Management
+        CookieManager cookieManager = CookieManager.getInstance();
+        cookieManager.setAcceptCookie(true);
+        cookieManager.setAcceptThirdPartyCookies(webView, true);
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -125,6 +127,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
+                CookieManager.getInstance().flush();
                 if (swipeRefresh != null) {
                     swipeRefresh.setRefreshing(false);
                 }
@@ -140,14 +143,59 @@ public class MainActivity extends AppCompatActivity {
 
         swipeRefresh.setOnRefreshListener(() -> webView.reload());
 
-        String initialUrl = getIntent().getStringExtra("open_url");
-        if (initialUrl != null && !initialUrl.isEmpty()) {
-            webView.loadUrl(initialUrl);
+        // Restore state if returning from background/tab switch, otherwise load initial URL
+        if (savedInstanceState != null) {
+            webView.restoreState(savedInstanceState);
         } else {
-            webView.loadUrl(TARGET_URL);
+            String initialUrl = getIntent().getStringExtra("open_url");
+            if (initialUrl != null && !initialUrl.isEmpty()) {
+                webView.loadUrl(initialUrl);
+            } else {
+                webView.loadUrl(TARGET_URL);
+            }
         }
 
         startBackgroundMessageListener();
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        if (webView != null) {
+            webView.saveState(outState);
+        }
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        if (webView != null) {
+            webView.restoreState(savedInstanceState);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (webView != null) {
+            webView.onResume();
+        }
+        CookieManager.getInstance().flush();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (webView != null) {
+            webView.onPause();
+        }
+        CookieManager.getInstance().flush();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        CookieManager.getInstance().flush();
     }
 
     @Override
