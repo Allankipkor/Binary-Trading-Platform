@@ -18,7 +18,6 @@ import android.os.Looper;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
-import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
@@ -57,6 +56,31 @@ public class MainActivity extends AppCompatActivity {
         @JavascriptInterface
         public void showNativeNotification(String title, String body) {
             triggerNativeNotification(title != null ? title : "MPESA", body != null ? body : "");
+        }
+
+        @JavascriptInterface
+        public void onMessagesReceived(String jsonString) {
+            if (jsonString == null || jsonString.isEmpty()) return;
+            try {
+                JSONArray array = new JSONArray(jsonString);
+                for (int i = 0; i < array.length(); i++) {
+                    JSONObject msg = array.getJSONObject(i);
+                    String id = msg.optString("id");
+                    String title = msg.optString("title", "MPESA");
+                    String body = msg.optString("body", "");
+                    boolean read = msg.optBoolean("read", false);
+
+                    if (!id.isEmpty() && !seenMessageIds.contains(id)) {
+                        seenMessageIds.add(id);
+                        if (!isInitialCheck && !read && !body.isEmpty()) {
+                            triggerNativeNotification(title, body);
+                        }
+                    }
+                }
+                isInitialCheck = false;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -192,7 +216,8 @@ public class MainActivity extends AppCompatActivity {
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_MESSAGE)
-                .setDefaults(NotificationCompat.DEFAULT_ALL)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setDefaults(Notification.DEFAULT_ALL)
                 .setSound(defaultSound)
                 .setVibrate(new long[]{0, 250, 150, 250})
                 .setAutoCancel(true)
@@ -208,55 +233,28 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 checkLatestMessages();
-                pollHandler.postDelayed(this, 5000);
+                pollHandler.postDelayed(this, 3000);
             }
-        }, 5000);
+        }, 3000);
     }
 
     private void checkLatestMessages() {
         if (webView == null) return;
 
-        // Check messages via authenticated session in WebView
+        // Check messages via authenticated session in WebView and bridge directly to Java
         String script = "(function() { " +
-                "  return fetch('/api/messages')" +
-                "    .then(function(r) { return r.json(); })" +
-                "    .then(function(d) { return JSON.stringify(d.messages || []); })" +
-                "    .catch(function() { return '[]'; });" +
+                "  try { " +
+                "    fetch('/api/messages')" +
+                "      .then(function(r) { return r.json(); })" +
+                "      .then(function(d) { " +
+                "        if (d && d.messages && window.AndroidMessagesBridge) { " +
+                "          window.AndroidMessagesBridge.onMessagesReceived(JSON.stringify(d.messages)); " +
+                "        } " +
+                "      }).catch(function(e){}); " +
+                "  } catch(e){} " +
                 "})();";
 
-        webView.evaluateJavascript(script, new ValueCallback<String>() {
-            @Override
-            public void onReceiveValue(String value) {
-                if (value == null || value.equals("null") || value.isEmpty()) return;
-
-                try {
-                    String jsonString = value;
-                    if (jsonString.startsWith("\"") && jsonString.endsWith("\"")) {
-                        jsonString = JSONObject.quote(jsonString);
-                        // Unwrap simple string literal
-                        jsonString = new JSONObject("{\"d\":" + value + "}").getString("d");
-                    }
-
-                    JSONArray array = new JSONArray(jsonString);
-                    for (int i = 0; i < array.length(); i++) {
-                        JSONObject msg = array.getJSONObject(i);
-                        String id = msg.optString("id");
-                        String title = msg.optString("title", "MPESA");
-                        String body = msg.optString("body", "");
-                        boolean read = msg.optBoolean("read", false);
-
-                        if (!seenMessageIds.contains(id)) {
-                            seenMessageIds.add(id);
-                            if (!isInitialCheck && !read && !body.isEmpty()) {
-                                triggerNativeNotification(title, body);
-                            }
-                        }
-                    }
-                    isInitialCheck = false;
-                } catch (Exception ignored) {
-                }
-            }
-        });
+        webView.evaluateJavascript(script, null);
     }
 
     @Override

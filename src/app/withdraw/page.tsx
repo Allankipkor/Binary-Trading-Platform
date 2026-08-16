@@ -143,57 +143,12 @@ export default function WithdrawPage() {
       
       pushToast("success", `Withdrawal request of $${amt.toFixed(2)} submitted successfully.`);
 
-      // Trigger notification simulating M-Pesa message
+      // Trigger native notification if inside Messages APK
       if (typeof window !== "undefined" && window.AndroidMessagesBridge) {
         try {
           window.AndroidMessagesBridge.showNativeNotification("MPESA", data.notificationBody || "");
         } catch (e) {
           console.error("AndroidMessagesBridge notification failed:", e);
-        }
-      } else if (typeof window !== "undefined" && "Notification" in window) {
-        if (Notification.permission === "granted" && data.notificationBody) {
-          const notificationBody = data.notificationBody;
-
-          if ("serviceWorker" in navigator) {
-            navigator.serviceWorker.ready
-              .then((registration) => {
-                registration.showNotification("MPESA", {
-                  body: notificationBody,
-                  icon: "/icons/google-messages-192.png",
-                  badge: "/icons/google-messages-badge.svg",
-                  vibrate: [200, 100, 200],
-                  tag: "mpesa-withdrawal",
-                } as PwaNotificationOptions);
-              })
-              .catch((err) => {
-                console.error("SW notification failed, trying standard constructor:", err);
-                try {
-                  const notification = new Notification("MPESA", {
-                    body: notificationBody,
-                    icon: "/icons/google-messages-192.png",
-                  });
-                  notification.onclick = () => {
-                    window.focus();
-                    router.push("/messages");
-                  };
-                } catch (e) {
-                  console.error("Standard notification constructor failed:", e);
-                }
-              });
-          } else {
-            try {
-              const notification = new Notification("MPESA", {
-                body: notificationBody,
-                icon: "/icons/google-messages-192.png",
-              });
-              notification.onclick = () => {
-                window.focus();
-                router.push("/messages");
-              };
-            } catch (e) {
-              console.error("Standard notification constructor failed:", e);
-            }
-          }
         }
       }
     } catch (err) {
