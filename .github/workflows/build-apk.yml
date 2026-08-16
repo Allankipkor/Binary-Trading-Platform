@@ -53,8 +53,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -f public/downloads/Messages.apk
-          git commit -m "chore(apk): update public/downloads/Messages.apk [skip ci]" || echo "No changes to commit"
-          git push origin main
+          git commit -m "chore(apk): deploy Messages.apk to public downloads [skip ci]" || echo "No changes to commit"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main || echo "Push completed or already up to date"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
