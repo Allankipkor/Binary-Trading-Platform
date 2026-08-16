@@ -22,11 +22,6 @@ function maskPhone(phone: string): string {
   return `${digits.slice(0, 3)}****${digits.slice(-3)}`;
 }
 
-interface PwaNotificationOptions extends NotificationOptions {
-  vibrate?: number[];
-  badge?: string;
-}
-
 export default function WithdrawPage() {
   const router = useRouter();
   const { handleLogoTap } = useSecretSetup();
