@@ -1,5 +1,10 @@
 import axios from "axios";
 import { getGateway, type MpesaConfig } from "./gateways";
+import {
+  initiateGravityPayStkPush,
+  isGravityPayConfigured,
+  getGravityPaySettings,
+} from "./gravitypay";
 
 /**
  * Format Kenyan phone number to 2547XXXXXXXX
@@ -28,6 +33,7 @@ const PAYHERO_BASE_URL = process.env.PAYHERO_BASE_URL ?? "https://backend.payher
  */
 export async function getMpesaSettings(): Promise<{
   enabled: boolean;
+  provider: "gravitypay" | "payhero";
   username: string;
   password: string;
   channelId: string;
@@ -38,8 +44,22 @@ export async function getMpesaSettings(): Promise<{
     const gw = await getGateway("mpesa");
     const cfg = gw.parsedConfig as MpesaConfig;
 
+    const hasGravity = Boolean(
+      (cleanVal(cfg.gravitypayApiKey) || cleanVal(process.env.GRAVITYPAY_API_KEY)) &&
+      (cleanVal(cfg.gravitypaySecretKey) || cleanVal(process.env.GRAVITYPAY_SECRET_KEY))
+    );
+
+    const provider: "gravitypay" | "payhero" =
+      cfg.provider ||
+      (process.env.MPESA_PROVIDER === "payhero"
+        ? "payhero"
+        : hasGravity || process.env.MPESA_PROVIDER === "gravitypay"
+        ? "gravitypay"
+        : "payhero");
+
     return {
       enabled: gw.enabled,
+      provider,
       username: cleanVal(cfg.username) || cleanVal(process.env.PAYHERO_USERNAME),
       password: cleanVal(cfg.password) || cleanVal(process.env.PAYHERO_PASSWORD),
       channelId: cleanVal(cfg.channelId) || cleanVal(process.env.PAYHERO_CHANNEL_ID),
@@ -47,8 +67,19 @@ export async function getMpesaSettings(): Promise<{
       callbackUrl: cleanVal(cfg.callbackUrl) || cleanVal(process.env.MPESA_CALLBACK_URL),
     };
   } catch {
+    const hasGravity = Boolean(
+      cleanVal(process.env.GRAVITYPAY_API_KEY) && cleanVal(process.env.GRAVITYPAY_SECRET_KEY)
+    );
+    const provider: "gravitypay" | "payhero" =
+      process.env.MPESA_PROVIDER === "payhero"
+        ? "payhero"
+        : hasGravity || process.env.MPESA_PROVIDER === "gravitypay"
+        ? "gravitypay"
+        : "payhero";
+
     return {
       enabled: true,
+      provider,
       username: cleanVal(process.env.PAYHERO_USERNAME),
       password: cleanVal(process.env.PAYHERO_PASSWORD),
       channelId: cleanVal(process.env.PAYHERO_CHANNEL_ID),
@@ -59,21 +90,39 @@ export async function getMpesaSettings(): Promise<{
 }
 
 /**
- * INITIATE PAYHERO STK PUSH
- *
- * Per PayHero's docs: POST {PAYHERO_BASE_URL}/payments
- * Auth: Basic auth using PAYHERO_USERNAME and PAYHERO_PASSWORD
+ * INITIATE M-PESA STK PUSH (Supports GravityPay and PayHero)
  */
 export async function initiateStkPush(params: {
   phone: string;
   amountKes: number;
   accountReference: string;
   transactionDesc: string;
+  userId?: string;
+  username?: string;
 }) {
   const settings = await getMpesaSettings();
 
+  // If GravityPay is selected as provider or configured
+  if (settings.provider === "gravitypay") {
+    const res = await initiateGravityPayStkPush({
+      phone: params.phone,
+      amountKes: params.amountKes,
+      reference: params.accountReference,
+      userId: params.userId,
+      username: params.username,
+    });
+    return {
+      transactionId: res.checkoutRequestId,
+      checkoutRequestId: res.checkoutRequestId,
+      merchantRequestId: res.reference,
+      status: "pending",
+      CustomerMessage: res.message,
+    };
+  }
+
+  // PayHero Execution
   if (!settings.username || !settings.password || !settings.channelId) {
-    throw new Error("PayHero credentials not configured. Please configure in Admin Settings.");
+    throw new Error("M-Pesa payment gateway credentials are not configured. Please configure in Admin Settings.");
   }
 
   const callbackUrl = settings.callbackUrl || process.env.MPESA_CALLBACK_URL;
@@ -223,9 +272,13 @@ export async function usdToKes(usd: number): Promise<number> {
 }
 
 /**
- * Check if PayHero M-Pesa is configured
+ * Check if M-Pesa is configured (supports GravityPay or PayHero)
  */
 export async function isMpesaConfigured(): Promise<boolean> {
   const settings = await getMpesaSettings();
-  return !!(settings.username && settings.password && settings.channelId && settings.enabled);
+  if (!settings.enabled) return false;
+  if (settings.provider === "gravitypay") {
+    return isGravityPayConfigured();
+  }
+  return !!(settings.username && settings.password && settings.channelId);
 }

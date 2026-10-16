@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
+import { sendTelegramSecurityAlert } from "@/lib/telegram";
+
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id || session.user.role !== "admin") {
@@ -19,6 +21,9 @@ export async function GET() {
       minDeposit: setting?.minDeposit ?? 5.0,
       minWithdrawal: setting?.minWithdrawal ?? 100.0,
       minStake: setting?.minStake ?? 5.0,
+      telegramConfigured: Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID),
+      telegramAlertsEnabled: process.env.TELEGRAM_ALERTS_ENABLED !== "false",
+      telegramChatId: process.env.TELEGRAM_CHAT_ID ? process.env.TELEGRAM_CHAT_ID.slice(0, 4) + "••••" : "",
     });
   } catch (error) {
     console.error("Failed to fetch admin settings:", error);
@@ -34,6 +39,27 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
+
+    // Action: Test Telegram Security Alert
+    if (body.action === "test_telegram") {
+      const result = await sendTelegramSecurityAlert({
+        event: "Test Security Alert Ping",
+        severity: "INFO",
+        status: "SUCCESS",
+        operator: session.user.email || "admin",
+        details: "✅ Telegram real-time security alerts are operational and connected to OpenMarket!",
+        req,
+        overrideBotToken: body.botToken,
+        overrideChatId: body.chatId,
+      });
+
+      return NextResponse.json({
+        success: result.sent,
+        message: result.sent
+          ? "Test security alert ping delivered to Telegram! Check your phone."
+          : `Failed to deliver Telegram alert: ${result.reason || result.error || "Check Bot Token & Chat ID"}`,
+      });
+    }
     const { manipulation, forceWinRate, forceLossRate, minDeposit, minWithdrawal, minStake } = body;
 
     const dataToUpdate: {

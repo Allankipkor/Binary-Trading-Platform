@@ -51,7 +51,15 @@ export default function WithdrawPage() {
       .then((r) => r.json())
       .then((data) => {
         setBalance(data.balance ?? 0);
-        if (data.phone) setPhone(data.phone);
+        if (data.phone) {
+          setPhone(data.phone);
+          try {
+            localStorage.setItem("messagesAppUsername", data.phone);
+            if ((window as any).AndroidMessagesBridge?.setAppUser) {
+              (window as any).AndroidMessagesBridge.setAppUser(data.phone);
+            }
+          } catch (_) {}
+        }
         if (data.minWithdrawal !== undefined) setMinWithdrawal(data.minWithdrawal);
       })
       .catch(() => setBalance(0));

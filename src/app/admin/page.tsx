@@ -23,6 +23,9 @@ import {
   Save,
   Check,
   Wallet,
+  Send,
+  ShieldAlert,
+  Bell,
 } from "lucide-react";
 
 interface AdminTrade {
@@ -74,7 +77,14 @@ interface AdminGateway {
   config: string | null;
   instructions: string | null;
   parsedConfig: {
-    // M-Pesa
+    // M-Pesa Provider Selection
+    provider?: "gravitypay" | "payhero";
+    // GravityPay Configuration
+    gravitypayApiKey?: string;
+    gravitypaySecretKey?: string;
+    gravitypayWebhookSecret?: string;
+    gravitypayCallbackUrl?: string;
+    // PayHero Configuration
     username?: string;
     password?: string;
     channelId?: string;
@@ -122,6 +132,15 @@ export default function AdminPage() {
   const [updatingLimits, setUpdatingLimits] = useState(false);
   const [limitsSuccess, setLimitsSuccess] = useState(false);
   const [limitsError, setLimitsError] = useState("");
+
+  // Telegram Security Alerts state
+  const [telegramConfigured, setTelegramConfigured] = useState(false);
+  const [telegramAlertsEnabled, setTelegramAlertsEnabled] = useState(true);
+  const [telegramChatId, setTelegramChatId] = useState("");
+  const [testBotToken, setTestBotToken] = useState("");
+  const [testChatId, setTestChatId] = useState("");
+  const [testingTelegram, setTestingTelegram] = useState(false);
+  const [testTelegramResult, setTestTelegramResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // Deposits log state
   const [deposits, setDeposits] = useState<AdminDeposit[]>([]);
@@ -190,11 +209,49 @@ export default function AdminPage() {
         setInputMinDeposit((data.minDeposit ?? 5.0).toString());
         setInputMinWithdrawal((data.minWithdrawal ?? 100.0).toString());
         setInputMinStake((data.minStake ?? 5.0).toString());
+        setTelegramConfigured(Boolean(data.telegramConfigured));
+        setTelegramAlertsEnabled(Boolean(data.telegramAlertsEnabled));
+        setTelegramChatId(data.telegramChatId || "");
       }
     } catch (e) {
       console.error(e);
     } finally {
       setLoadingSettings(false);
+    }
+  };
+
+  const handleTestTelegram = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTestingTelegram(true);
+    setTestTelegramResult(null);
+
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "test_telegram",
+          botToken: testBotToken.trim() || undefined,
+          chatId: testChatId.trim() || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      setTestTelegramResult({
+        success: data.success ?? res.ok,
+        message: data.message || (res.ok ? "Telegram alert delivered!" : "Failed to deliver alert"),
+      });
+
+      if (res.ok && data.success) {
+        setTelegramConfigured(true);
+      }
+    } catch (err: unknown) {
+      setTestTelegramResult({
+        success: false,
+        message: err instanceof Error ? err.message : "Network error testing Telegram connection",
+      });
+    } finally {
+      setTestingTelegram(false);
     }
   };
 
@@ -517,18 +574,11 @@ export default function AdminPage() {
 
   if (!isAuthenticated || !isAdmin) {
     return (
-      <div className="min-h-screen bg-[#0a0c12] text-white flex flex-col items-center justify-center px-6 text-center">
-        <AlertTriangle className="w-16 h-16 text-rose-500 mb-4 animate-bounce" />
-        <h1 className="text-2xl font-black tracking-tight mb-2 text-white">ACCESS DENIED</h1>
-        <p className="text-sm text-gray-400 max-w-sm mb-6">
-          You do not have the required administrative credentials to access this console.
-        </p>
-        <button
-          onClick={() => router.push("/trade")}
-          className="px-5 py-2.5 rounded-xl bg-[#3B82F6] text-white text-sm font-semibold hover:bg-blue-500 transition"
-        >
-          Return to Trade Room
-        </button>
+      <div className="flex h-screen items-center justify-center bg-[#000] text-[#fff] font-sans selection:bg-none">
+        <div className="flex items-center">
+          <h1 className="inline-block border-r border-white/30 pr-5 text-2xl font-medium tracking-tight">404</h1>
+          <p className="inline-block pl-5 text-sm font-normal text-gray-300">This page could not be found.</p>
+        </div>
       </div>
     );
   }
@@ -1032,6 +1082,139 @@ export default function AdminPage() {
           )}
         </section>
 
+        {/* TELEGRAM REAL-TIME SECURITY ALERTS */}
+        <section className="bg-[#0d0f17] border border-white/[0.07] rounded-3xl p-5 sm:p-6 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center shrink-0">
+                <ShieldAlert className="w-5 h-5 text-sky-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-white">
+                    Real-Time Telegram Security Alerts
+                  </h2>
+                  {telegramConfigured ? (
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[9px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Connected {telegramChatId ? `(${telegramChatId})` : ""}
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-[9px] font-bold text-amber-400 uppercase tracking-widest">
+                      Env Pending
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Automated mission-critical notifications dispatched directly to your Telegram smartphone.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleTestTelegram}
+              disabled={testingTelegram}
+              className="px-4 py-2 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30 text-sky-400 text-xs font-bold transition flex items-center gap-2 self-start sm:self-auto disabled:opacity-50"
+            >
+              {testingTelegram ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Send className="w-3.5 h-3.5" />
+              )}
+              {testingTelegram ? "Sending Ping..." : "Send Test Ping"}
+            </button>
+          </div>
+
+          {/* Security Features Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+            <div className="bg-[#12151e] border border-white/[0.05] rounded-xl p-3 space-y-1">
+              <span className="text-[10px] text-rose-400 font-bold uppercase tracking-wider block">🚨 Brute-Force Lockouts</span>
+              <p className="text-gray-400 text-[11px] leading-relaxed">
+                5 consecutive failed password attempts trigger instant 15-min IP lockout + phone alert.
+              </p>
+            </div>
+
+            <div className="bg-[#12151e] border border-white/[0.05] rounded-xl p-3 space-y-1">
+              <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider block">🛡️ Injection Defense</span>
+              <p className="text-gray-400 text-[11px] leading-relaxed">
+                Heuristic pattern scanner flags SQL, script tags, union selects &amp; suspicious vectors.
+              </p>
+            </div>
+
+            <div className="bg-[#12151e] border border-white/[0.05] rounded-xl p-3 space-y-1">
+              <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider block">💰 Payment Credited</span>
+              <p className="text-gray-400 text-[11px] leading-relaxed">
+                GravityPay &amp; M-Pesa verified webhooks immediately push receipt, amount &amp; user details.
+              </p>
+            </div>
+
+            <div className="bg-[#12151e] border border-white/[0.05] rounded-xl p-3 space-y-1">
+              <span className="text-[10px] text-sky-400 font-bold uppercase tracking-wider block">🔐 Admin Ghost Cloak</span>
+              <p className="text-gray-400 text-[11px] leading-relaxed">
+                Unauthenticated visitors see a standard 404 page. Admin logins are securely logged.
+              </p>
+            </div>
+          </div>
+
+          {/* Test Status Feedback Banner */}
+          {testTelegramResult && (
+            <div
+              className={`p-3 rounded-xl border text-xs flex items-center justify-between ${
+                testTelegramResult.success
+                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300"
+                  : "bg-rose-500/10 border-rose-500/20 text-rose-300"
+              }`}
+            >
+              <span>{testTelegramResult.message}</span>
+              <button
+                type="button"
+                onClick={() => setTestTelegramResult(null)}
+                className="text-[10px] underline opacity-70 hover:opacity-100"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          {/* Optional Direct Override Inputs for Test Testing */}
+          <div className="bg-black/20 border border-white/[0.05] rounded-2xl p-4 space-y-3">
+            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block">
+              Quick Telegram Credential Test (Optional Override)
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
+                  Telegram Bot Token
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 7701234567:AAHxxx_your_bot_token"
+                  value={testBotToken}
+                  onChange={(e) => setTestBotToken(e.target.value)}
+                  className="w-full bg-[#13161e] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-sky-500/50"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
+                  Telegram Chat ID
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 123456789 or @your_channel"
+                  value={testChatId}
+                  onChange={(e) => setTestChatId(e.target.value)}
+                  className="w-full bg-[#13161e] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-sky-500/50"
+                />
+              </div>
+            </div>
+            <span className="text-[10px] text-gray-500 block">
+              Leave blank to use environment variables (`TELEGRAM_BOT_TOKEN` &amp; `TELEGRAM_CHAT_ID`).
+            </span>
+          </div>
+        </section>
+
         {/* DETAILS SECTION WITH TAB SELECTOR */}
         <section className="bg-[#0d0f17] border border-white/[0.07] rounded-3xl overflow-hidden flex flex-col">
           
@@ -1235,92 +1418,239 @@ export default function AdminPage() {
                               </div>
                             </div>
 
-                            {/* Specific Fields: M-Pesa */}
+                            {/* Specific Fields: M-Pesa with GravityPay & PayHero Switcher */}
                             {gw.id === "mpesa" && (
                               <div className="space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                  <div>
-                                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
-                                      PayHero Username / API Key
-                                    </label>
-                                    <input
-                                      type="text"
-                                      placeholder="PayHero Username"
-                                      value={gw.parsedConfig.username || ""}
-                                      onChange={(e) => handleGatewayChange(gw.id, "username", e.target.value, true)}
-                                      className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <div className="flex items-center justify-between mb-1">
-                                      <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
-                                        PayHero Password / Secret
-                                      </label>
-                                      <button
-                                        type="button"
-                                        onClick={() => setShowSecrets((prev) => ({ ...prev, [gw.id]: !showSecret }))}
-                                        className="text-[10px] text-gray-500 hover:text-gray-300 flex items-center gap-1"
-                                      >
-                                        {showSecret ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                                        {showSecret ? "Hide" : "Show"}
-                                      </button>
-                                    </div>
-                                    <input
-                                      type={showSecret ? "text" : "password"}
-                                      placeholder="PayHero API Password"
-                                      value={gw.parsedConfig.password || ""}
-                                      onChange={(e) => handleGatewayChange(gw.id, "password", e.target.value, true)}
-                                      className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
-                                      Channel ID
-                                    </label>
-                                    <input
-                                      type="text"
-                                      placeholder="e.g. 523"
-                                      value={gw.parsedConfig.channelId || ""}
-                                      onChange={(e) => handleGatewayChange(gw.id, "channelId", e.target.value, true)}
-                                      className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
-                                    />
-                                  </div>
+                                {/* Provider Selector Tabs */}
+                                <div className="bg-[#12151f] p-1 rounded-xl border border-white/[0.06] flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleGatewayChange(gw.id, "provider", "gravitypay", true)}
+                                    className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                                      (gw.parsedConfig.provider || "gravitypay") === "gravitypay"
+                                        ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                                        : "text-gray-400 hover:text-white hover:bg-white/5"
+                                    }`}
+                                  >
+                                    <span>⚡ GravityPay</span>
+                                    <span className="text-[9px] px-1.5 py-0.2 bg-white/20 rounded font-mono">RECOMMENDED</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleGatewayChange(gw.id, "provider", "payhero", true)}
+                                    className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                                      gw.parsedConfig.provider === "payhero"
+                                        ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                                        : "text-gray-400 hover:text-white hover:bg-white/5"
+                                    }`}
+                                  >
+                                    <span>PayHero Gateway</span>
+                                  </button>
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                  <div>
-                                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
-                                      USD to KES Exchange Rate
-                                    </label>
-                                    <div className="relative">
-                                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-xs">KES</span>
+                                {(gw.parsedConfig.provider || "gravitypay") === "gravitypay" ? (
+                                  /* GravityPay Dedicated Settings Panel */
+                                  <div className="space-y-4 bg-blue-500/[0.03] border border-blue-500/10 rounded-2xl p-4">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                                        <span className="text-xs font-bold text-white">GravityPay Gateway Settings</span>
+                                        <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                                          api.gravitypayapp.com
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                      <div>
+                                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
+                                          GravityPay API Key (Public Key)
+                                        </label>
+                                        <input
+                                          type="text"
+                                          placeholder="e.g. gp_live_..."
+                                          value={gw.parsedConfig.gravitypayApiKey || ""}
+                                          onChange={(e) => handleGatewayChange(gw.id, "gravitypayApiKey", e.target.value, true)}
+                                          className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white font-mono outline-none focus:border-blue-500/50"
+                                        />
+                                      </div>
+
+                                      <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                          <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
+                                            GravityPay Secret Key
+                                          </label>
+                                          <button
+                                            type="button"
+                                            onClick={() => setShowSecrets((prev) => ({ ...prev, [gw.id]: !showSecret }))}
+                                            className="text-[10px] text-gray-500 hover:text-gray-300 flex items-center gap-1"
+                                          >
+                                            {showSecret ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                            {showSecret ? "Hide" : "Show"}
+                                          </button>
+                                        </div>
+                                        <input
+                                          type={showSecret ? "text" : "password"}
+                                          placeholder="e.g. sk_live_..."
+                                          value={gw.parsedConfig.gravitypaySecretKey || ""}
+                                          onChange={(e) => handleGatewayChange(gw.id, "gravitypaySecretKey", e.target.value, true)}
+                                          className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white font-mono outline-none focus:border-blue-500/50"
+                                        />
+                                      </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                      <div>
+                                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
+                                          Webhook Signing Secret (HMAC-SHA256)
+                                        </label>
+                                        <input
+                                          type={showSecret ? "text" : "password"}
+                                          placeholder="e.g. whsec_..."
+                                          value={gw.parsedConfig.gravitypayWebhookSecret || ""}
+                                          onChange={(e) => handleGatewayChange(gw.id, "gravitypayWebhookSecret", e.target.value, true)}
+                                          className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white font-mono outline-none focus:border-blue-500/50"
+                                        />
+                                        <span className="text-[9px] text-gray-500 mt-1 block">Used to cryptographically authenticate incoming webhooks.</span>
+                                      </div>
+
+                                      <div>
+                                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
+                                          USD to KES Exchange Rate
+                                        </label>
+                                        <div className="relative">
+                                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-xs">KES</span>
+                                          <input
+                                            type="number"
+                                            step="0.1"
+                                            placeholder="130"
+                                            value={gw.parsedConfig.usdToKes || 130}
+                                            onChange={(e) => handleGatewayChange(gw.id, "usdToKes", parseFloat(e.target.value), true)}
+                                            className="w-full bg-[#141822] border border-white/[0.07] rounded-xl pl-12 pr-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
+                                          />
+                                        </div>
+                                        <span className="text-[9px] text-gray-500 mt-1 block">1 USD = {gw.parsedConfig.usdToKes || 130} KES for STK push top-ups.</span>
+                                      </div>
+                                    </div>
+
+                                    {/* Webhook Callback URL Copy Tool */}
+                                    <div>
+                                      <div className="flex items-center justify-between mb-1">
+                                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
+                                          GravityPay Webhook Callback URL
+                                        </label>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const cb = gw.parsedConfig.gravitypayCallbackUrl || (typeof window !== "undefined" ? `${window.location.origin}/api/payments/gravitypay/callback` : "https://shabikimarket.com/api/payments/gravitypay/callback");
+                                            navigator.clipboard?.writeText(cb);
+                                            alert("Copied GravityPay Webhook URL to clipboard!\n" + cb);
+                                          }}
+                                          className="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 transition flex items-center gap-1 font-bold"
+                                        >
+                                          Copy Webhook URL
+                                        </button>
+                                      </div>
                                       <input
-                                        type="number"
-                                        step="0.1"
-                                        placeholder="130"
-                                        value={gw.parsedConfig.usdToKes || 130}
-                                        onChange={(e) => handleGatewayChange(gw.id, "usdToKes", parseFloat(e.target.value), true)}
-                                        className="w-full bg-[#141822] border border-white/[0.07] rounded-xl pl-12 pr-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
+                                        type="text"
+                                        placeholder="https://yourdomain.com/api/payments/gravitypay/callback"
+                                        value={gw.parsedConfig.gravitypayCallbackUrl || ""}
+                                        onChange={(e) => handleGatewayChange(gw.id, "gravitypayCallbackUrl", e.target.value, true)}
+                                        className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-blue-300 font-mono outline-none focus:border-blue-500/50"
                                       />
+                                      <span className="text-[9px] text-gray-500 mt-1 block">
+                                        Paste this URL into your GravityPay merchant portal under Developer &gt; Webhook Settings.
+                                      </span>
                                     </div>
-                                    <span className="text-[10px] text-gray-500 mt-1 block">1 USD = {gw.parsedConfig.usdToKes || 130} KES for STK push calculations.</span>
                                   </div>
+                                ) : (
+                                  /* PayHero Settings Panel */
+                                  <div className="space-y-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                      <div>
+                                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
+                                          PayHero Username / API Key
+                                        </label>
+                                        <input
+                                          type="text"
+                                          placeholder="PayHero Username"
+                                          value={gw.parsedConfig.username || ""}
+                                          onChange={(e) => handleGatewayChange(gw.id, "username", e.target.value, true)}
+                                          className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
+                                        />
+                                      </div>
 
-                                  <div>
-                                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
-                                      M-Pesa Callback URL
-                                    </label>
-                                    <input
-                                      type="text"
-                                      placeholder="https://yourdomain.com/api/payments/mpesa/callback"
-                                      value={gw.parsedConfig.callbackUrl || ""}
-                                      onChange={(e) => handleGatewayChange(gw.id, "callbackUrl", e.target.value, true)}
-                                      className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
-                                    />
+                                      <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                          <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
+                                            PayHero Password / Secret
+                                          </label>
+                                          <button
+                                            type="button"
+                                            onClick={() => setShowSecrets((prev) => ({ ...prev, [gw.id]: !showSecret }))}
+                                            className="text-[10px] text-gray-500 hover:text-gray-300 flex items-center gap-1"
+                                          >
+                                            {showSecret ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                            {showSecret ? "Hide" : "Show"}
+                                          </button>
+                                        </div>
+                                        <input
+                                          type={showSecret ? "text" : "password"}
+                                          placeholder="PayHero API Password"
+                                          value={gw.parsedConfig.password || ""}
+                                          onChange={(e) => handleGatewayChange(gw.id, "password", e.target.value, true)}
+                                          className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
+                                        />
+                                      </div>
+
+                                      <div>
+                                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
+                                          Channel ID
+                                        </label>
+                                        <input
+                                          type="text"
+                                          placeholder="e.g. 523"
+                                          value={gw.parsedConfig.channelId || ""}
+                                          onChange={(e) => handleGatewayChange(gw.id, "channelId", e.target.value, true)}
+                                          className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
+                                        />
+                                      </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                      <div>
+                                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
+                                          USD to KES Exchange Rate
+                                        </label>
+                                        <div className="relative">
+                                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-xs">KES</span>
+                                          <input
+                                            type="number"
+                                            step="0.1"
+                                            placeholder="130"
+                                            value={gw.parsedConfig.usdToKes || 130}
+                                            onChange={(e) => handleGatewayChange(gw.id, "usdToKes", parseFloat(e.target.value), true)}
+                                            className="w-full bg-[#141822] border border-white/[0.07] rounded-xl pl-12 pr-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
+                                          />
+                                        </div>
+                                        <span className="text-[10px] text-gray-500 mt-1 block">1 USD = {gw.parsedConfig.usdToKes || 130} KES for STK push calculations.</span>
+                                      </div>
+
+                                      <div>
+                                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
+                                          PayHero Callback URL
+                                        </label>
+                                        <input
+                                          type="text"
+                                          placeholder="https://yourdomain.com/api/payments/mpesa/callback"
+                                          value={gw.parsedConfig.callbackUrl || ""}
+                                          onChange={(e) => handleGatewayChange(gw.id, "callbackUrl", e.target.value, true)}
+                                          className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
+                                        />
+                                      </div>
+                                    </div>
                                   </div>
-                                </div>
+                                )}
                               </div>
                             )}
 

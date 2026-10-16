@@ -95,7 +95,7 @@ function formatBubbleDate(isoString: string): string {
 
 export default function MessagesPage() {
   const router = useRouter();
-  const { status: sessionStatus } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
 
   // State
   const [dbMessages, setDbMessages] = useState<DBMessage[]>([]);
@@ -116,6 +116,21 @@ export default function MessagesPage() {
       navigator.serviceWorker.register("/sw.js").catch(console.error);
     }
   }, [sessionStatus, router]);
+
+  // Sync user identifier to localStorage & Android bridge
+  useEffect(() => {
+    if (session?.user) {
+      const ident = session.user.email || session.user.name || session.user.id || "";
+      if (ident && typeof window !== "undefined") {
+        try {
+          localStorage.setItem("messagesAppUsername", ident);
+          if ((window as any).AndroidMessagesBridge?.setAppUser) {
+            (window as any).AndroidMessagesBridge.setAppUser(ident);
+          }
+        } catch (_) {}
+      }
+    }
+  }, [session]);
 
   // Fetch messages from database
   const fetchMessages = useCallback(async () => {

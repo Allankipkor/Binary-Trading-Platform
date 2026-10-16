@@ -135,6 +135,8 @@ export async function POST(req: Request) {
           amountKes,
           accountReference: reference,
           transactionDesc: "ShabikiMarket deposit",
+          userId: session.user.id,
+          username: user?.name || user?.email || "Trader",
         });
 
         await prisma.transaction.update({

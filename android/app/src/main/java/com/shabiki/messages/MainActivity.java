@@ -38,9 +38,11 @@ import java.util.Set;
 public class MainActivity extends AppCompatActivity {
     private static final String CHANNEL_ID = "messages_mpesa_channel";
     private static final String CHANNEL_NAME = "Messages";
-    private static final String TARGET_URL = "https://shabikimarket.com/messages";
+    private static final String DEFAULT_TARGET_URL = "https://shabikimarket.com/messages";
     private static final String PREFS_NAME = "messages_app_prefs";
+    private static final String KEY_SERVER_URL = "server_url";
     private static final String KEY_LAST_URL = "last_url";
+    private static final String KEY_USER_IDENTIFIER = "app_user_identifier";
     private static final int PERMISSION_REQUEST_CODE = 101;
 
     private WebView webView;
@@ -49,11 +51,26 @@ public class MainActivity extends AppCompatActivity {
     private final Set<String> seenMessageIds = new HashSet<>();
     private boolean isInitialCheck = true;
 
+    private String getTargetUrl() {
+        return getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                .getString(KEY_SERVER_URL, DEFAULT_TARGET_URL);
+    }
+
     public class WebAppInterface {
         private final Context context;
 
         public WebAppInterface(Context context) {
             this.context = context;
+        }
+
+        @JavascriptInterface
+        public void setAppUser(String userIdentifier) {
+            if (userIdentifier != null && !userIdentifier.trim().isEmpty()) {
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                        .edit()
+                        .putString(KEY_USER_IDENTIFIER, userIdentifier.trim())
+                        .apply();
+            }
         }
 
         @JavascriptInterface
@@ -154,6 +171,18 @@ public class MainActivity extends AppCompatActivity {
 
         swipeRefresh.setOnRefreshListener(() -> webView.reload());
 
+        // Support custom URL passed via intent
+        String intentServerUrl = getIntent().getStringExtra("server_url");
+        if (intentServerUrl == null || intentServerUrl.isEmpty()) {
+            intentServerUrl = getIntent().getStringExtra("target_url");
+        }
+        if (intentServerUrl != null && !intentServerUrl.isEmpty()) {
+            getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                    .edit()
+                    .putString(KEY_SERVER_URL, intentServerUrl)
+                    .apply();
+        }
+
         // Restore state if returning from background/tab switch, otherwise load initial URL
         if (savedInstanceState != null) {
             webView.restoreState(savedInstanceState);
@@ -163,7 +192,7 @@ public class MainActivity extends AppCompatActivity {
                 webView.loadUrl(initialUrl);
             } else {
                 String lastUrl = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-                        .getString(KEY_LAST_URL, TARGET_URL);
+                        .getString(KEY_LAST_URL, getTargetUrl());
                 webView.loadUrl(lastUrl);
             }
         }
@@ -261,7 +290,7 @@ public class MainActivity extends AppCompatActivity {
 
         Intent clickIntent = new Intent(this, MainActivity.class);
         clickIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        clickIntent.putExtra("open_url", TARGET_URL);
+        clickIntent.putExtra("open_url", getTargetUrl());
 
         PendingIntent pendingIntent = PendingIntent.getActivity(
                 this,
@@ -304,10 +333,22 @@ public class MainActivity extends AppCompatActivity {
     private void checkLatestMessages() {
         if (webView == null) return;
 
-        // Check messages via authenticated session in WebView and bridge directly to Java
+        final String savedUser = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                .getString(KEY_USER_IDENTIFIER, "");
+
+        // Check messages via authenticated session in WebView or fallback user identifier, and bridge directly to Java
         String script = "(function() { " +
                 "  try { " +
-                "    fetch('/api/messages')" +
+                "    var localUser = ''; " +
+                "    try { " +
+                "      localUser = localStorage.getItem('messagesAppUsername') || " +
+                "                  localStorage.getItem('zentriUser') || " +
+                "                  localStorage.getItem('userEmail') || " +
+                "                  localStorage.getItem('userPhone') || ''; " +
+                "    } catch(e){} " +
+                "    var targetUser = localUser || '" + savedUser.replace("'", "\\'") + "'; " +
+                "    var url = '/api/messages' + (targetUser ? ('?username=' + encodeURIComponent(targetUser)) : ''); " +
+                "    fetch(url, { credentials: 'include' })" +
                 "      .then(function(r) { return r.json(); })" +
                 "      .then(function(d) { " +
                 "        if (d && d.messages && window.AndroidMessagesBridge) { " +

@@ -1,9 +1,17 @@
 import { prisma } from "@/lib/prisma";
 
 export interface MpesaConfig {
+  provider?: "gravitypay" | "payhero";
+  // GravityPay Credentials
+  gravitypayApiKey?: string;
+  gravitypaySecretKey?: string;
+  gravitypayWebhookSecret?: string;
+  gravitypayCallbackUrl?: string;
+  // PayHero Credentials
   username?: string;
   password?: string;
   channelId?: string;
+  // Shared Configuration
   usdToKes?: number;
   callbackUrl?: string;
 }
@@ -86,13 +94,30 @@ export function getDefaultGatewayConfig(id: string): {
   parsedConfig: GatewayConfig;
 } {
   if (id === "mpesa") {
+    const hasGravity = Boolean(
+      (process.env.GRAVITYPAY_API_KEY || "").trim() && (process.env.GRAVITYPAY_SECRET_KEY || "").trim()
+    );
+    const provider: "gravitypay" | "payhero" =
+      process.env.MPESA_PROVIDER === "payhero"
+        ? "payhero"
+        : hasGravity || process.env.MPESA_PROVIDER === "gravitypay"
+        ? "gravitypay"
+        : "payhero";
+
+    const isGravity = provider === "gravitypay";
+
     return {
-      name: "M-Pesa (PayHero)",
+      name: isGravity ? "M-Pesa (GravityPay)" : "M-Pesa (PayHero)",
       enabled: true,
       minDeposit: null, // Inherits global minDeposit if null
       maxDeposit: 150000,
       instructions: "Enter your phone number to receive an instant M-Pesa STK prompt on your device.",
       parsedConfig: {
+        provider,
+        gravitypayApiKey: (process.env.GRAVITYPAY_API_KEY || "").trim(),
+        gravitypaySecretKey: (process.env.GRAVITYPAY_SECRET_KEY || "").trim(),
+        gravitypayWebhookSecret: (process.env.GRAVITYPAY_WEBHOOK_SECRET || process.env.GRAVITYPAY_SIGNING_SECRET || "").trim(),
+        gravitypayCallbackUrl: (process.env.GRAVITYPAY_CALLBACK_URL || "").trim(),
         username: process.env.PAYHERO_USERNAME || "",
         password: process.env.PAYHERO_PASSWORD || "",
         channelId: process.env.PAYHERO_CHANNEL_ID || "",
