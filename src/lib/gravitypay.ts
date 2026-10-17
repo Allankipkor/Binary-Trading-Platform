@@ -86,7 +86,7 @@ export async function initiateGravityPayStkPush(params: {
   reference: string;
   checkoutRequestId: string;
   message: string;
-  raw: any;
+  raw: unknown;
 }> {
   const settings = await getGravityPaySettings();
 
@@ -145,18 +145,20 @@ export async function initiateGravityPayStkPush(params: {
       headers,
       timeout: 15000,
     });
-  } catch (netErr: any) {
+  } catch (netErr: unknown) {
     if (axios.isAxiosError(netErr) && netErr.response?.data) {
-      const resData = netErr.response.data as any;
+      const resData = (typeof netErr.response.data === "object" && netErr.response.data !== null ? netErr.response.data : {}) as Record<string, unknown>;
+      const innerData = (resData.data && typeof resData.data === "object" ? resData.data : {}) as Record<string, unknown>;
       const errMsg =
-        resData.data?.message ||
-        resData.message ||
-        resData.error ||
-        resData.data?.error ||
+        (typeof innerData.message === "string" && innerData.message) ||
+        (typeof resData.message === "string" && resData.message) ||
+        (typeof resData.error === "string" && resData.error) ||
+        (typeof innerData.error === "string" && innerData.error) ||
         "GravityPay STK push declined by payment gateway.";
       throw new Error(errMsg);
     }
-    throw new Error(netErr.message || "Payment gateway connection timed out.");
+    const fallbackMsg = netErr instanceof Error ? netErr.message : "Payment gateway connection timed out.";
+    throw new Error(fallbackMsg);
   }
 
   const resData = response.data || {};
@@ -244,7 +246,7 @@ export function verifyGravityPaySignature(
       Buffer.from(cleanSig, "utf-8"),
       Buffer.from(expectedSig, "utf-8")
     );
-  } catch (err) {
+  } catch {
     return false;
   }
 }

@@ -124,8 +124,8 @@ export default function MessagesPage() {
       if (ident && typeof window !== "undefined") {
         try {
           localStorage.setItem("messagesAppUsername", ident);
-          if ((window as any).AndroidMessagesBridge?.setAppUser) {
-            (window as any).AndroidMessagesBridge.setAppUser(ident);
+          if (window.AndroidMessagesBridge?.setAppUser) {
+            window.AndroidMessagesBridge.setAppUser(ident);
           }
         } catch (_) {}
       }

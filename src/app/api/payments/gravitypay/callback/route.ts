@@ -42,22 +42,31 @@ export async function POST(req: Request) {
     }
   }
 
-  let body: any = {};
+  let body: Record<string, unknown> = {};
   try {
     body = JSON.parse(rawBody);
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
   }
 
-  const response = body.response || body.data || body;
+  const response = (
+    typeof body.response === "object" && body.response !== null
+      ? body.response
+      : typeof body.data === "object" && body.data !== null
+      ? body.data
+      : body
+  ) as Record<string, unknown>;
 
-  // Handle Safaricom Daraja STK callback format if present
-  const stkCb =
-    body.Body?.stkCallback ||
+  const bodyBody = typeof body.Body === "object" && body.Body !== null ? (body.Body as Record<string, unknown>) : null;
+  const respBody = typeof response.Body === "object" && response.Body !== null ? (response.Body as Record<string, unknown>) : null;
+
+  const stkCb = (
+    bodyBody?.stkCallback ||
     body.stkCallback ||
-    response.Body?.stkCallback ||
+    respBody?.stkCallback ||
     response.stkCallback ||
-    null;
+    null
+  ) as Record<string, unknown> | null;
 
   let resultCode: number | null = null;
   let checkoutRequestId = "";
@@ -70,8 +79,9 @@ export async function POST(req: Request) {
   if (stkCb) {
     resultCode = Number(stkCb.ResultCode);
     checkoutRequestId = String(stkCb.CheckoutRequestID || "").trim();
-    if (resultCode === 0 && Array.isArray(stkCb.CallbackMetadata?.Item)) {
-      for (const item of stkCb.CallbackMetadata.Item) {
+    const cbMeta = (typeof stkCb.CallbackMetadata === "object" && stkCb.CallbackMetadata !== null ? stkCb.CallbackMetadata : {}) as Record<string, unknown>;
+    if (resultCode === 0 && Array.isArray(cbMeta.Item)) {
+      for (const item of cbMeta.Item as Array<{ Name?: string; Value?: unknown }>) {
         if (item.Name === "Amount") rawAmount = Number(item.Value);
         if (item.Name === "MpesaReceiptNumber") mpesaReceipt = String(item.Value || "").trim();
         if (item.Name === "PhoneNumber") phone = String(item.Value || "").trim();

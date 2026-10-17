@@ -1,5 +1,3 @@
-import crypto from "crypto";
-
 export interface TelegramAlertOptions {
   event: string;
   severity?: "INFO" | "HIGH" | "CRITICAL";
@@ -204,8 +202,9 @@ export async function sendTelegramSecurityAlert({
     });
     const data = await res.json();
     return { sent: Boolean(data.ok), error: data.description };
-  } catch (err: any) {
-    console.error("Telegram alert dispatch error:", err?.message || err);
-    return { sent: false, error: err?.message || String(err) };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error("Telegram alert dispatch error:", errorMsg);
+    return { sent: false, error: errorMsg };
   }
 }

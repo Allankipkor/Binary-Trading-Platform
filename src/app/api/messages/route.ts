@@ -65,9 +65,10 @@ export async function GET(req: Request) {
         createdAt: m.createdAt,
       })),
     });
-  } catch (error: any) {
-    console.error("Failed to fetch messages:", error);
-    return NextResponse.json({ error: "Failed to fetch messages", messages: [] }, { status: 500 });
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : "Failed to fetch messages";
+    console.error("Failed to fetch messages:", errorMsg);
+    return NextResponse.json({ error: errorMsg, messages: [] }, { status: 500 });
   }
 }
 
@@ -131,9 +132,10 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ error: "Target user not found" }, { status: 404 });
-  } catch (error: any) {
-    console.error("Failed to insert message:", error);
-    return NextResponse.json({ error: error?.message || "Failed" }, { status: 500 });
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : "Failed to insert message";
+    console.error("Failed to insert message:", errorMsg);
+    return NextResponse.json({ error: errorMsg }, { status: 500 });
   }
 }
 

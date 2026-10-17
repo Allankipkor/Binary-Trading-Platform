@@ -55,8 +55,8 @@ export default function WithdrawPage() {
           setPhone(data.phone);
           try {
             localStorage.setItem("messagesAppUsername", data.phone);
-            if ((window as any).AndroidMessagesBridge?.setAppUser) {
-              (window as any).AndroidMessagesBridge.setAppUser(data.phone);
+            if (window.AndroidMessagesBridge?.setAppUser) {
+              window.AndroidMessagesBridge.setAppUser(data.phone);
             }
           } catch (_) {}
         }

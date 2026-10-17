@@ -3,7 +3,6 @@ import { getGateway, type MpesaConfig } from "./gateways";
 import {
   initiateGravityPayStkPush,
   isGravityPayConfigured,
-  getGravityPaySettings,
 } from "./gravitypay";
 
 /**
