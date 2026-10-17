@@ -28,7 +28,8 @@ function cleanVal(val: string | undefined | null): string {
 const PAYHERO_BASE_URL = process.env.PAYHERO_BASE_URL ?? "https://backend.payhero.co.ke/api/v2";
 
 /**
- * Get effective Mpesa configuration (DB settings overriding .env defaults)
+ * Get effective Mpesa configuration (DB settings overriding .env defaults for provider & rates)
+ * Credentials are strictly read from process.env (Vercel environment variables).
  */
 export async function getMpesaSettings(): Promise<{
   enabled: boolean;
@@ -44,8 +45,8 @@ export async function getMpesaSettings(): Promise<{
     const cfg = gw.parsedConfig as MpesaConfig;
 
     const hasGravity = Boolean(
-      (cleanVal(cfg.gravitypayApiKey) || cleanVal(process.env.GRAVITYPAY_API_KEY)) &&
-      (cleanVal(cfg.gravitypaySecretKey) || cleanVal(process.env.GRAVITYPAY_SECRET_KEY))
+      cleanVal(process.env.GRAVITYPAY_API_KEY) &&
+      cleanVal(process.env.GRAVITYPAY_SECRET_KEY)
     );
 
     const provider: "gravitypay" | "payhero" =
@@ -59,11 +60,11 @@ export async function getMpesaSettings(): Promise<{
     return {
       enabled: gw.enabled,
       provider,
-      username: cleanVal(cfg.username) || cleanVal(process.env.PAYHERO_USERNAME),
-      password: cleanVal(cfg.password) || cleanVal(process.env.PAYHERO_PASSWORD),
-      channelId: cleanVal(cfg.channelId) || cleanVal(process.env.PAYHERO_CHANNEL_ID),
+      username: cleanVal(process.env.PAYHERO_USERNAME),
+      password: cleanVal(process.env.PAYHERO_PASSWORD),
+      channelId: cleanVal(process.env.PAYHERO_CHANNEL_ID),
       usdToKes: cfg.usdToKes && cfg.usdToKes > 0 ? cfg.usdToKes : parseFloat(process.env.USD_TO_KES ?? "130"),
-      callbackUrl: cleanVal(cfg.callbackUrl) || cleanVal(process.env.MPESA_CALLBACK_URL),
+      callbackUrl: cleanVal(process.env.MPESA_CALLBACK_URL),
     };
   } catch {
     const hasGravity = Boolean(
@@ -121,12 +122,14 @@ export async function initiateStkPush(params: {
 
   // PayHero Execution
   if (!settings.username || !settings.password || !settings.channelId) {
-    throw new Error("M-Pesa payment gateway credentials are not configured. Please configure in Admin Settings.");
+    throw new Error(
+      "PayHero credentials are not configured. Please set PAYHERO_USERNAME, PAYHERO_PASSWORD, and PAYHERO_CHANNEL_ID in Vercel environment variables."
+    );
   }
 
   const callbackUrl = settings.callbackUrl || process.env.MPESA_CALLBACK_URL;
   if (!callbackUrl) {
-    throw new Error("MPESA_CALLBACK_URL not configured");
+    throw new Error("MPESA_CALLBACK_URL environment variable is not configured in Vercel.");
   }
 
   const externalReference = params.accountReference?.slice(0, 32) ?? "OPENMARKET";

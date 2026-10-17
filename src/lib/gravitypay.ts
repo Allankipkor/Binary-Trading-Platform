@@ -34,20 +34,15 @@ export function generateGravityPayRef(): string {
  * Fetch effective GravityPay settings from Gateway DB record or process.env
  */
 export async function getGravityPaySettings(): Promise<GravityPaySettings> {
-  let apiKey = (process.env.GRAVITYPAY_API_KEY || "").trim();
-  let secretKey = (process.env.GRAVITYPAY_SECRET_KEY || "").trim();
-  let webhookSecret = (process.env.GRAVITYPAY_WEBHOOK_SECRET || process.env.GRAVITYPAY_SIGNING_SECRET || "").trim();
+  const apiKey = (process.env.GRAVITYPAY_API_KEY || "").trim();
+  const secretKey = (process.env.GRAVITYPAY_SECRET_KEY || "").trim();
+  const webhookSecret = (process.env.GRAVITYPAY_WEBHOOK_SECRET || process.env.GRAVITYPAY_SIGNING_SECRET || "").trim();
   let callbackUrl = (process.env.GRAVITYPAY_CALLBACK_URL || "").trim();
   let usdToKes = parseFloat(process.env.USD_TO_KES || "130");
 
   try {
     const gw = await getGateway("mpesa");
     const cfg = gw.parsedConfig as MpesaConfig;
-
-    if (cfg.gravitypayApiKey) apiKey = cfg.gravitypayApiKey.trim();
-    if (cfg.gravitypaySecretKey) secretKey = cfg.gravitypaySecretKey.trim();
-    if (cfg.gravitypayWebhookSecret) webhookSecret = cfg.gravitypayWebhookSecret.trim();
-    if (cfg.gravitypayCallbackUrl) callbackUrl = cfg.gravitypayCallbackUrl.trim();
     if (cfg.usdToKes && cfg.usdToKes > 0) usdToKes = cfg.usdToKes;
   } catch (err) {
     console.warn("Could not read gateway settings from DB in getGravityPaySettings:", err);
@@ -92,7 +87,7 @@ export async function initiateGravityPayStkPush(params: {
 
   if (!settings.apiKey || !settings.secretKey) {
     throw new Error(
-      "GravityPay API Key and Secret Key are not configured. Please configure them in Admin Settings."
+      "GravityPay API Key and Secret Key are not configured. Please set GRAVITYPAY_API_KEY and GRAVITYPAY_SECRET_KEY in Vercel environment variables."
     );
   }
 

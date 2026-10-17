@@ -16,8 +16,8 @@ export async function getPaypalSettings(): Promise<{
     const gw = await getGateway("card");
     const cfg = gw.parsedConfig as PaypalConfig;
 
-    const clientId = cfg.clientId || process.env.PAYPAL_CLIENT_ID || process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
-    const clientSecret = cfg.clientSecret || process.env.PAYPAL_CLIENT_SECRET || "";
+    const clientId = process.env.PAYPAL_CLIENT_ID || process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
+    const clientSecret = process.env.PAYPAL_CLIENT_SECRET || "";
     const payeeEmail = cfg.payeeEmail || process.env.PAYPAL_PAYEE_EMAIL || undefined;
     const env = cfg.env || (process.env.PAYPAL_ENV as "sandbox" | "live") || "live";
 

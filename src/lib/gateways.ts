@@ -41,6 +41,8 @@ export interface GatewayRecord {
   config: string | null;
   instructions: string | null;
   parsedConfig: GatewayConfig;
+  envConfigured?: boolean;
+  envDetails?: Record<string, boolean>;
 }
 
 export interface GatewayPublicInfo {
@@ -160,6 +162,73 @@ export function getDefaultGatewayConfig(id: string): {
 }
 
 /**
+ * Detect whether required Vercel environment variables are present for a gateway.
+ */
+export function getGatewayEnvStatus(id: string, currentProvider?: string): {
+  configured: boolean;
+  details: Record<string, boolean>;
+} {
+  if (id === "mpesa") {
+    const gravitypayApiKey = Boolean((process.env.GRAVITYPAY_API_KEY || "").trim());
+    const gravitypaySecretKey = Boolean((process.env.GRAVITYPAY_SECRET_KEY || "").trim());
+    const gravitypayWebhookSecret = Boolean(
+      (process.env.GRAVITYPAY_WEBHOOK_SECRET || process.env.GRAVITYPAY_SIGNING_SECRET || "").trim()
+    );
+    const payheroUsername = Boolean((process.env.PAYHERO_USERNAME || "").trim());
+    const payheroPassword = Boolean((process.env.PAYHERO_PASSWORD || "").trim());
+    const payheroChannelId = Boolean((process.env.PAYHERO_CHANNEL_ID || "").trim());
+
+    const isGravityPay =
+      currentProvider === "gravitypay" ||
+      (!currentProvider && (gravitypayApiKey || process.env.MPESA_PROVIDER === "gravitypay"));
+
+    const configured = isGravityPay
+      ? Boolean(gravitypayApiKey && gravitypaySecretKey)
+      : Boolean(payheroUsername && payheroPassword && payheroChannelId);
+
+    return {
+      configured,
+      details: {
+        gravitypayApiKey,
+        gravitypaySecretKey,
+        gravitypayWebhookSecret,
+        payheroUsername,
+        payheroPassword,
+        payheroChannelId,
+      },
+    };
+  }
+
+  if (id === "crypto") {
+    const address = Boolean((process.env.CRYPTO_USDT_ADDRESS || "").trim());
+    const tronGridApiKey = Boolean((process.env.TRONGRID_API_KEY || "").trim());
+    return {
+      configured: address,
+      details: {
+        address,
+        tronGridApiKey,
+      },
+    };
+  }
+
+  if (id === "card") {
+    const clientId = Boolean(
+      (process.env.PAYPAL_CLIENT_ID || process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "").trim()
+    );
+    const clientSecret = Boolean((process.env.PAYPAL_CLIENT_SECRET || "").trim());
+    return {
+      configured: Boolean(clientId && clientSecret),
+      details: {
+        clientId,
+        clientSecret,
+      },
+    };
+  }
+
+  return { configured: false, details: {} };
+}
+
+/**
  * Fetch a single gateway by ID with fallback to .env and database seeding.
  */
 export async function getGateway(id: "mpesa" | "crypto" | "card" | string): Promise<GatewayRecord> {
@@ -185,6 +254,7 @@ export async function getGateway(id: "mpesa" | "crypto" | "card" | string): Prom
         },
       });
 
+      const envStatus = getGatewayEnvStatus(id, (defaults.parsedConfig as MpesaConfig).provider);
       return {
         id: created.id,
         name: created.name,
@@ -194,6 +264,8 @@ export async function getGateway(id: "mpesa" | "crypto" | "card" | string): Prom
         config: created.config,
         instructions: created.instructions,
         parsedConfig: defaults.parsedConfig,
+        envConfigured: envStatus.configured,
+        envDetails: envStatus.details,
       };
     }
 
@@ -207,6 +279,7 @@ export async function getGateway(id: "mpesa" | "crypto" | "card" | string): Prom
       }
     }
 
+    const envStatus = getGatewayEnvStatus(id, (parsedConfig as MpesaConfig).provider);
     return {
       id: record.id,
       name: record.name,
@@ -216,9 +289,12 @@ export async function getGateway(id: "mpesa" | "crypto" | "card" | string): Prom
       config: record.config,
       instructions: record.instructions,
       parsedConfig,
+      envConfigured: envStatus.configured,
+      envDetails: envStatus.details,
     };
   } catch (error) {
     console.error(`Failed to fetch gateway ${id} from database, using defaults:`, error);
+    const envStatus = getGatewayEnvStatus(id, (defaults.parsedConfig as MpesaConfig).provider);
     return {
       id,
       name: defaults.name,
@@ -228,6 +304,8 @@ export async function getGateway(id: "mpesa" | "crypto" | "card" | string): Prom
       config: JSON.stringify(defaults.parsedConfig),
       instructions: defaults.instructions,
       parsedConfig: defaults.parsedConfig,
+      envConfigured: envStatus.configured,
+      envDetails: envStatus.details,
     };
   }
 }

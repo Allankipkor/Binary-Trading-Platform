@@ -13,9 +13,9 @@ export async function getCryptoSettings(): Promise<{
 
     return {
       enabled: gw.enabled,
-      address: cfg.address || process.env.CRYPTO_USDT_ADDRESS || null,
-      network: cfg.network || "TRC20",
-      tronGridApiKey: cfg.tronGridApiKey || process.env.TRONGRID_API_KEY || null,
+      address: (process.env.CRYPTO_USDT_ADDRESS || "").trim() || null,
+      network: "TRC20",
+      tronGridApiKey: (process.env.TRONGRID_API_KEY || "").trim() || null,
       autoConfirm: cfg.autoConfirm !== undefined ? cfg.autoConfirm : process.env.CRYPTO_AUTO_CONFIRM === "true",
     };
   } catch {

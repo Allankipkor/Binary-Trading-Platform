@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    // Action: Test Telegram Security Alert
+    // Action: Test Telegram Security Alert (Strictly using Vercel env variables)
     if (body.action === "test_telegram") {
       const result = await sendTelegramSecurityAlert({
         event: "Test Security Alert Ping",
@@ -49,15 +49,13 @@ export async function POST(req: Request) {
         operator: session.user.email || "admin",
         details: "✅ Telegram real-time security alerts are operational and connected to OpenMarket!",
         req,
-        overrideBotToken: body.botToken,
-        overrideChatId: body.chatId,
       });
 
       return NextResponse.json({
         success: result.sent,
         message: result.sent
           ? "Test security alert ping delivered to Telegram! Check your phone."
-          : `Failed to deliver Telegram alert: ${result.reason || result.error || "Check Bot Token & Chat ID"}`,
+          : `Failed to deliver Telegram alert: ${result.reason || result.error || "Please verify TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in Vercel environment variables."}`,
       });
     }
     const { manipulation, forceWinRate, forceLossRate, minDeposit, minWithdrawal, minStake } = body;

@@ -18,8 +18,7 @@ import {
   Smartphone,
   Bitcoin,
   CreditCard,
-  Eye,
-  EyeOff,
+  Copy,
   Save,
   Check,
   Wallet,
@@ -76,28 +75,18 @@ interface AdminGateway {
   maxDeposit: number | null;
   config: string | null;
   instructions: string | null;
+  envConfigured?: boolean;
+  envDetails?: Record<string, boolean>;
   parsedConfig: {
     // M-Pesa Provider Selection
     provider?: "gravitypay" | "payhero";
-    // GravityPay Configuration
-    gravitypayApiKey?: string;
-    gravitypaySecretKey?: string;
-    gravitypayWebhookSecret?: string;
-    gravitypayCallbackUrl?: string;
-    // PayHero Configuration
-    username?: string;
-    password?: string;
-    channelId?: string;
     usdToKes?: number;
+    gravitypayCallbackUrl?: string;
     callbackUrl?: string;
     // Crypto
-    address?: string;
     network?: string;
-    tronGridApiKey?: string;
     autoConfirm?: boolean;
     // PayPal / Card
-    clientId?: string;
-    clientSecret?: string;
     payeeEmail?: string;
     env?: "sandbox" | "live";
   };
@@ -137,8 +126,6 @@ export default function AdminPage() {
   const [telegramConfigured, setTelegramConfigured] = useState(false);
   const [telegramAlertsEnabled, setTelegramAlertsEnabled] = useState(true);
   const [telegramChatId, setTelegramChatId] = useState("");
-  const [testBotToken, setTestBotToken] = useState("");
-  const [testChatId, setTestChatId] = useState("");
   const [testingTelegram, setTestingTelegram] = useState(false);
   const [testTelegramResult, setTestTelegramResult] = useState<{ success: boolean; message: string } | null>(null);
 
@@ -152,7 +139,6 @@ export default function AdminPage() {
   const [savingGatewayId, setSavingGatewayId] = useState<string | null>(null);
   const [gatewaySuccess, setGatewaySuccess] = useState<Record<string, boolean>>({});
   const [gatewayErrors, setGatewayErrors] = useState<Record<string, string>>({});
-  const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
   
   // Search & Edit User states
   const [searchTerm, setSearchTerm] = useState("");
@@ -231,8 +217,6 @@ export default function AdminPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "test_telegram",
-          botToken: testBotToken.trim() || undefined,
-          chatId: testChatId.trim() || undefined,
         }),
       });
 
@@ -1177,41 +1161,25 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* Optional Direct Override Inputs for Test Testing */}
-          <div className="bg-black/20 border border-white/[0.05] rounded-2xl p-4 space-y-3">
-            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block">
-              Quick Telegram Credential Test (Optional Override)
-            </span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
-                  Telegram Bot Token
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. 7701234567:AAHxxx_your_bot_token"
-                  value={testBotToken}
-                  onChange={(e) => setTestBotToken(e.target.value)}
-                  className="w-full bg-[#13161e] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-sky-500/50"
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
-                  Telegram Chat ID
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. 123456789 or @your_channel"
-                  value={testChatId}
-                  onChange={(e) => setTestChatId(e.target.value)}
-                  className="w-full bg-[#13161e] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-sky-500/50"
-                />
-              </div>
+          {/* Vercel Environment Variables Status (Strict Mode) */}
+          <div className="bg-black/20 border border-white/[0.05] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div className="space-y-1">
+              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
+                Vercel Environment Variables (Strict Security Mode)
+              </span>
+              <p className="text-gray-400 text-[11px]">
+                Bot tokens and Chat IDs are loaded exclusively from Vercel environment variables (<code className="text-sky-300">TELEGRAM_BOT_TOKEN</code> &amp; <code className="text-sky-300">TELEGRAM_CHAT_ID</code>) to prevent secrets from being exposed or stored in the database.
+              </p>
             </div>
-            <span className="text-[10px] text-gray-500 block">
-              Leave blank to use environment variables (`TELEGRAM_BOT_TOKEN` &amp; `TELEGRAM_CHAT_ID`).
-            </span>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold ${
+                telegramConfigured
+                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                  : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+              }`}>
+                {telegramConfigured ? "✅ VERCEL ENV ACTIVE" : "⚠️ VERCEL ENV PENDING"}
+              </span>
+            </div>
           </div>
         </section>
 
@@ -1299,7 +1267,6 @@ export default function AdminPage() {
                       const isSaving = savingGatewayId === gw.id;
                       const hasSuccess = gatewaySuccess[gw.id];
                       const errorMsg = gatewayErrors[gw.id];
-                      const showSecret = showSecrets[gw.id];
 
                       return (
                         <div
@@ -1337,6 +1304,13 @@ export default function AdminPage() {
                                       : "bg-gray-500/15 text-gray-400 border border-white/10"
                                   }`}>
                                     {gw.enabled ? "Active" : "Disabled"}
+                                  </span>
+                                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                                    gw.envConfigured
+                                      ? "bg-sky-500/15 text-sky-400 border border-sky-500/30"
+                                      : "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                                  }`}>
+                                    {gw.envConfigured ? "Vercel Env Ready" : "Vercel Env Pending"}
                                   </span>
                                 </div>
                                 <span className="text-[11px] text-gray-500">ID: {gw.id}</span>
@@ -1454,66 +1428,53 @@ export default function AdminPage() {
                                     <div className="flex items-center justify-between">
                                       <div className="flex items-center gap-2">
                                         <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-                                        <span className="text-xs font-bold text-white">GravityPay Gateway Settings</span>
+                                        <span className="text-xs font-bold text-white">GravityPay Gateway Status</span>
                                         <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
                                           api.gravitypayapp.com
                                         </span>
                                       </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {/* Vercel Environment Variables Status (Strict Security) */}
+                                    <div className="bg-[#141822] border border-white/[0.06] rounded-xl p-3.5 space-y-2.5">
                                       <div>
-                                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
-                                          GravityPay API Key (Public Key)
-                                        </label>
-                                        <input
-                                          type="text"
-                                          placeholder="e.g. gp_live_..."
-                                          value={gw.parsedConfig.gravitypayApiKey || ""}
-                                          onChange={(e) => handleGatewayChange(gw.id, "gravitypayApiKey", e.target.value, true)}
-                                          className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white font-mono outline-none focus:border-blue-500/50"
-                                        />
+                                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
+                                          Vercel Environment Keys (Strict Security)
+                                        </span>
+                                        <p className="text-[11px] text-gray-400">
+                                          GravityPay credentials are read directly from Vercel environment variables and never stored in the database.
+                                        </p>
                                       </div>
-
-                                      <div>
-                                        <div className="flex items-center justify-between mb-1">
-                                          <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
-                                            GravityPay Secret Key
-                                          </label>
-                                          <button
-                                            type="button"
-                                            onClick={() => setShowSecrets((prev) => ({ ...prev, [gw.id]: !showSecret }))}
-                                            className="text-[10px] text-gray-500 hover:text-gray-300 flex items-center gap-1"
-                                          >
-                                            {showSecret ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                                            {showSecret ? "Hide" : "Show"}
-                                          </button>
+                                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                                        <div className="bg-[#0f1118] border border-white/[0.05] rounded-lg p-2.5">
+                                          <span className="text-[9px] font-mono text-gray-400 block mb-1">GRAVITYPAY_API_KEY</span>
+                                          <span className={`text-[10px] font-bold flex items-center gap-1 ${
+                                            gw.envDetails?.gravitypayApiKey ? "text-emerald-400" : "text-amber-400"
+                                          }`}>
+                                            {gw.envDetails?.gravitypayApiKey ? "✅ Configured" : "⚠️ Missing in Vercel"}
+                                          </span>
                                         </div>
-                                        <input
-                                          type={showSecret ? "text" : "password"}
-                                          placeholder="e.g. sk_live_..."
-                                          value={gw.parsedConfig.gravitypaySecretKey || ""}
-                                          onChange={(e) => handleGatewayChange(gw.id, "gravitypaySecretKey", e.target.value, true)}
-                                          className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white font-mono outline-none focus:border-blue-500/50"
-                                        />
+                                        <div className="bg-[#0f1118] border border-white/[0.05] rounded-lg p-2.5">
+                                          <span className="text-[9px] font-mono text-gray-400 block mb-1">GRAVITYPAY_SECRET_KEY</span>
+                                          <span className={`text-[10px] font-bold flex items-center gap-1 ${
+                                            gw.envDetails?.gravitypaySecretKey ? "text-emerald-400" : "text-amber-400"
+                                          }`}>
+                                            {gw.envDetails?.gravitypaySecretKey ? "✅ Configured" : "⚠️ Missing in Vercel"}
+                                          </span>
+                                        </div>
+                                        <div className="bg-[#0f1118] border border-white/[0.05] rounded-lg p-2.5">
+                                          <span className="text-[9px] font-mono text-gray-400 block mb-1">GRAVITYPAY_WEBHOOK_SECRET</span>
+                                          <span className={`text-[10px] font-bold flex items-center gap-1 ${
+                                            gw.envDetails?.gravitypayWebhookSecret ? "text-emerald-400" : "text-gray-400"
+                                          }`}>
+                                            {gw.envDetails?.gravitypayWebhookSecret ? "✅ Configured" : "ℹ️ Optional / Not Set"}
+                                          </span>
+                                        </div>
                                       </div>
                                     </div>
 
+                                    {/* Operational Rate & Webhook */}
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                      <div>
-                                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
-                                          Webhook Signing Secret (HMAC-SHA256)
-                                        </label>
-                                        <input
-                                          type={showSecret ? "text" : "password"}
-                                          placeholder="e.g. whsec_..."
-                                          value={gw.parsedConfig.gravitypayWebhookSecret || ""}
-                                          onChange={(e) => handleGatewayChange(gw.id, "gravitypayWebhookSecret", e.target.value, true)}
-                                          className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white font-mono outline-none focus:border-blue-500/50"
-                                        />
-                                        <span className="text-[9px] text-gray-500 mt-1 block">Used to cryptographically authenticate incoming webhooks.</span>
-                                      </div>
-
                                       <div>
                                         <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
                                           USD to KES Exchange Rate
@@ -1531,89 +1492,85 @@ export default function AdminPage() {
                                         </div>
                                         <span className="text-[9px] text-gray-500 mt-1 block">1 USD = {gw.parsedConfig.usdToKes || 130} KES for STK push top-ups.</span>
                                       </div>
-                                    </div>
 
-                                    {/* Webhook Callback URL Copy Tool */}
-                                    <div>
-                                      <div className="flex items-center justify-between mb-1">
-                                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
-                                          GravityPay Webhook Callback URL
-                                        </label>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            const cb = gw.parsedConfig.gravitypayCallbackUrl || (typeof window !== "undefined" ? `${window.location.origin}/api/payments/gravitypay/callback` : "https://shabikimarket.com/api/payments/gravitypay/callback");
-                                            navigator.clipboard?.writeText(cb);
-                                            alert("Copied GravityPay Webhook URL to clipboard!\n" + cb);
-                                          }}
-                                          className="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 transition flex items-center gap-1 font-bold"
-                                        >
-                                          Copy Webhook URL
-                                        </button>
+                                      {/* Webhook Callback URL Copy Tool */}
+                                      <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                          <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
+                                            GravityPay Webhook Callback URL
+                                          </label>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              const cb = gw.parsedConfig.gravitypayCallbackUrl || (typeof window !== "undefined" ? `${window.location.origin}/api/payments/gravitypay/callback` : "https://shabikimarket.com/api/payments/gravitypay/callback");
+                                              navigator.clipboard?.writeText(cb);
+                                              alert("Copied GravityPay Webhook URL to clipboard!\n" + cb);
+                                            }}
+                                            className="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 transition flex items-center gap-1 font-bold"
+                                          >
+                                            <Copy className="w-3 h-3" />
+                                            Copy Webhook URL
+                                          </button>
+                                        </div>
+                                        <input
+                                          type="text"
+                                          readOnly
+                                          value={gw.parsedConfig.gravitypayCallbackUrl || (typeof window !== "undefined" ? `${window.location.origin}/api/payments/gravitypay/callback` : "https://shabikimarket.com/api/payments/gravitypay/callback")}
+                                          className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-blue-300 font-mono outline-none cursor-default"
+                                        />
+                                        <span className="text-[9px] text-gray-500 mt-1 block">
+                                          Paste this URL into your GravityPay merchant portal under Developer &gt; Webhook Settings.
+                                        </span>
                                       </div>
-                                      <input
-                                        type="text"
-                                        placeholder="https://yourdomain.com/api/payments/gravitypay/callback"
-                                        value={gw.parsedConfig.gravitypayCallbackUrl || ""}
-                                        onChange={(e) => handleGatewayChange(gw.id, "gravitypayCallbackUrl", e.target.value, true)}
-                                        className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-blue-300 font-mono outline-none focus:border-blue-500/50"
-                                      />
-                                      <span className="text-[9px] text-gray-500 mt-1 block">
-                                        Paste this URL into your GravityPay merchant portal under Developer &gt; Webhook Settings.
-                                      </span>
                                     </div>
                                   </div>
                                 ) : (
                                   /* PayHero Settings Panel */
-                                  <div className="space-y-4">
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                      <div>
-                                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
-                                          PayHero Username / API Key
-                                        </label>
-                                        <input
-                                          type="text"
-                                          placeholder="PayHero Username"
-                                          value={gw.parsedConfig.username || ""}
-                                          onChange={(e) => handleGatewayChange(gw.id, "username", e.target.value, true)}
-                                          className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
-                                        />
+                                  <div className="space-y-4 bg-white/[0.01] border border-white/[0.06] rounded-2xl p-4">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs font-bold text-white">PayHero Gateway Status</span>
+                                        <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/10 text-gray-300 border border-white/10">
+                                          backend.payhero.co.ke
+                                        </span>
                                       </div>
+                                    </div>
 
+                                    {/* Vercel Environment Variables Status (Strict Security) */}
+                                    <div className="bg-[#141822] border border-white/[0.06] rounded-xl p-3.5 space-y-2.5">
                                       <div>
-                                        <div className="flex items-center justify-between mb-1">
-                                          <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
-                                            PayHero Password / Secret
-                                          </label>
-                                          <button
-                                            type="button"
-                                            onClick={() => setShowSecrets((prev) => ({ ...prev, [gw.id]: !showSecret }))}
-                                            className="text-[10px] text-gray-500 hover:text-gray-300 flex items-center gap-1"
-                                          >
-                                            {showSecret ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                                            {showSecret ? "Hide" : "Show"}
-                                          </button>
+                                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
+                                          Vercel Environment Keys (Strict Security)
+                                        </span>
+                                        <p className="text-[11px] text-gray-400">
+                                          PayHero credentials are read directly from Vercel environment variables and never stored in the database.
+                                        </p>
+                                      </div>
+                                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                                        <div className="bg-[#0f1118] border border-white/[0.05] rounded-lg p-2.5">
+                                          <span className="text-[9px] font-mono text-gray-400 block mb-1">PAYHERO_USERNAME</span>
+                                          <span className={`text-[10px] font-bold flex items-center gap-1 ${
+                                            gw.envDetails?.payheroUsername ? "text-emerald-400" : "text-amber-400"
+                                          }`}>
+                                            {gw.envDetails?.payheroUsername ? "✅ Configured" : "⚠️ Missing in Vercel"}
+                                          </span>
                                         </div>
-                                        <input
-                                          type={showSecret ? "text" : "password"}
-                                          placeholder="PayHero API Password"
-                                          value={gw.parsedConfig.password || ""}
-                                          onChange={(e) => handleGatewayChange(gw.id, "password", e.target.value, true)}
-                                          className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
-                                        />
-                                      </div>
-
-                                      <div>
-                                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
-                                          Channel ID
-                                        </label>
-                                        <input
-                                          type="text"
-                                          placeholder="e.g. 523"
-                                          value={gw.parsedConfig.channelId || ""}
-                                          onChange={(e) => handleGatewayChange(gw.id, "channelId", e.target.value, true)}
-                                          className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
-                                        />
+                                        <div className="bg-[#0f1118] border border-white/[0.05] rounded-lg p-2.5">
+                                          <span className="text-[9px] font-mono text-gray-400 block mb-1">PAYHERO_PASSWORD</span>
+                                          <span className={`text-[10px] font-bold flex items-center gap-1 ${
+                                            gw.envDetails?.payheroPassword ? "text-emerald-400" : "text-amber-400"
+                                          }`}>
+                                            {gw.envDetails?.payheroPassword ? "✅ Configured" : "⚠️ Missing in Vercel"}
+                                          </span>
+                                        </div>
+                                        <div className="bg-[#0f1118] border border-white/[0.05] rounded-lg p-2.5">
+                                          <span className="text-[9px] font-mono text-gray-400 block mb-1">PAYHERO_CHANNEL_ID</span>
+                                          <span className={`text-[10px] font-bold flex items-center gap-1 ${
+                                            gw.envDetails?.payheroChannelId ? "text-emerald-400" : "text-amber-400"
+                                          }`}>
+                                            {gw.envDetails?.payheroChannelId ? "✅ Configured" : "⚠️ Missing in Vercel"}
+                                          </span>
+                                        </div>
                                       </div>
                                     </div>
 
@@ -1636,16 +1593,30 @@ export default function AdminPage() {
                                         <span className="text-[10px] text-gray-500 mt-1 block">1 USD = {gw.parsedConfig.usdToKes || 130} KES for STK push calculations.</span>
                                       </div>
 
+                                      {/* PayHero Callback URL Copy Tool */}
                                       <div>
-                                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
-                                          PayHero Callback URL
-                                        </label>
+                                        <div className="flex items-center justify-between mb-1">
+                                          <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
+                                            PayHero Callback URL
+                                          </label>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              const cb = gw.parsedConfig.callbackUrl || (typeof window !== "undefined" ? `${window.location.origin}/api/payments/mpesa/callback` : "https://shabikimarket.com/api/payments/mpesa/callback");
+                                              navigator.clipboard?.writeText(cb);
+                                              alert("Copied PayHero Callback URL to clipboard!\n" + cb);
+                                            }}
+                                            className="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 transition flex items-center gap-1 font-bold"
+                                          >
+                                            <Copy className="w-3 h-3" />
+                                            Copy Callback URL
+                                          </button>
+                                        </div>
                                         <input
                                           type="text"
-                                          placeholder="https://yourdomain.com/api/payments/mpesa/callback"
-                                          value={gw.parsedConfig.callbackUrl || ""}
-                                          onChange={(e) => handleGatewayChange(gw.id, "callbackUrl", e.target.value, true)}
-                                          className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
+                                          readOnly
+                                          value={gw.parsedConfig.callbackUrl || (typeof window !== "undefined" ? `${window.location.origin}/api/payments/mpesa/callback` : "https://shabikimarket.com/api/payments/mpesa/callback")}
+                                          className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-blue-300 font-mono outline-none cursor-default"
                                         />
                                       </div>
                                     </div>
@@ -1657,41 +1628,33 @@ export default function AdminPage() {
                             {/* Specific Fields: Crypto USDT */}
                             {gw.id === "crypto" && (
                               <div className="space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {/* Vercel Environment Variables Status (Strict Security) */}
+                                <div className="bg-[#141822] border border-white/[0.06] rounded-xl p-3.5 space-y-2.5">
                                   <div>
-                                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
-                                      USDT TRC20 Deposit Wallet Address
-                                    </label>
-                                    <input
-                                      type="text"
-                                      placeholder="e.g. TTzp475Uc59m3Xx8ADuZfRV133xSRhgp4k"
-                                      value={gw.parsedConfig.address || ""}
-                                      onChange={(e) => handleGatewayChange(gw.id, "address", e.target.value, true)}
-                                      className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-emerald-400 font-mono outline-none focus:border-blue-500/50"
-                                    />
+                                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
+                                      Vercel Environment Keys (Strict Security)
+                                    </span>
+                                    <p className="text-[11px] text-gray-400">
+                                      USDT TRC20 wallet address and optional TronGrid API key are loaded from Vercel environment variables.
+                                    </p>
                                   </div>
-
-                                  <div>
-                                    <div className="flex items-center justify-between mb-1">
-                                      <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
-                                        TronGrid API Key (Optional)
-                                      </label>
-                                      <button
-                                        type="button"
-                                        onClick={() => setShowSecrets((prev) => ({ ...prev, [gw.id]: !showSecret }))}
-                                        className="text-[10px] text-gray-500 hover:text-gray-300 flex items-center gap-1"
-                                      >
-                                        {showSecret ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                                        {showSecret ? "Hide" : "Show"}
-                                      </button>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                                    <div className="bg-[#0f1118] border border-white/[0.05] rounded-lg p-2.5">
+                                      <span className="text-[9px] font-mono text-gray-400 block mb-1">CRYPTO_USDT_ADDRESS</span>
+                                      <span className={`text-[10px] font-bold flex items-center gap-1 ${
+                                        gw.envDetails?.address ? "text-emerald-400" : "text-amber-400"
+                                      }`}>
+                                        {gw.envDetails?.address ? "✅ Configured in Vercel" : "⚠️ Missing in Vercel"}
+                                      </span>
                                     </div>
-                                    <input
-                                      type={showSecret ? "text" : "password"}
-                                      placeholder="TronGrid API Key for blockchain lookup"
-                                      value={gw.parsedConfig.tronGridApiKey || ""}
-                                      onChange={(e) => handleGatewayChange(gw.id, "tronGridApiKey", e.target.value, true)}
-                                      className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50"
-                                    />
+                                    <div className="bg-[#0f1118] border border-white/[0.05] rounded-lg p-2.5">
+                                      <span className="text-[9px] font-mono text-gray-400 block mb-1">TRONGRID_API_KEY</span>
+                                      <span className={`text-[10px] font-bold flex items-center gap-1 ${
+                                        gw.envDetails?.tronGridApiKey ? "text-emerald-400" : "text-gray-400"
+                                      }`}>
+                                        {gw.envDetails?.tronGridApiKey ? "✅ Configured" : "ℹ️ Optional / Not Set"}
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
 
@@ -1723,41 +1686,33 @@ export default function AdminPage() {
                             {/* Specific Fields: PayPal / Card */}
                             {gw.id === "card" && (
                               <div className="space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {/* Vercel Environment Variables Status (Strict Security) */}
+                                <div className="bg-[#141822] border border-white/[0.06] rounded-xl p-3.5 space-y-2.5">
                                   <div>
-                                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
-                                      PayPal Client ID
-                                    </label>
-                                    <input
-                                      type="text"
-                                      placeholder="PayPal Client ID"
-                                      value={gw.parsedConfig.clientId || ""}
-                                      onChange={(e) => handleGatewayChange(gw.id, "clientId", e.target.value, true)}
-                                      className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50 font-mono"
-                                    />
+                                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
+                                      Vercel Environment Keys (Strict Security)
+                                    </span>
+                                    <p className="text-[11px] text-gray-400">
+                                      PayPal Client ID and Secret are strictly loaded from Vercel environment variables.
+                                    </p>
                                   </div>
-
-                                  <div>
-                                    <div className="flex items-center justify-between mb-1">
-                                      <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
-                                        PayPal Client Secret
-                                      </label>
-                                      <button
-                                        type="button"
-                                        onClick={() => setShowSecrets((prev) => ({ ...prev, [gw.id]: !showSecret }))}
-                                        className="text-[10px] text-gray-500 hover:text-gray-300 flex items-center gap-1"
-                                      >
-                                        {showSecret ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                                        {showSecret ? "Hide" : "Show"}
-                                      </button>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                                    <div className="bg-[#0f1118] border border-white/[0.05] rounded-lg p-2.5">
+                                      <span className="text-[9px] font-mono text-gray-400 block mb-1">PAYPAL_CLIENT_ID</span>
+                                      <span className={`text-[10px] font-bold flex items-center gap-1 ${
+                                        gw.envDetails?.clientId ? "text-emerald-400" : "text-amber-400"
+                                      }`}>
+                                        {gw.envDetails?.clientId ? "✅ Configured in Vercel" : "⚠️ Missing in Vercel"}
+                                      </span>
                                     </div>
-                                    <input
-                                      type={showSecret ? "text" : "password"}
-                                      placeholder="PayPal Secret Key"
-                                      value={gw.parsedConfig.clientSecret || ""}
-                                      onChange={(e) => handleGatewayChange(gw.id, "clientSecret", e.target.value, true)}
-                                      className="w-full bg-[#141822] border border-white/[0.07] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50 font-mono"
-                                    />
+                                    <div className="bg-[#0f1118] border border-white/[0.05] rounded-lg p-2.5">
+                                      <span className="text-[9px] font-mono text-gray-400 block mb-1">PAYPAL_CLIENT_SECRET</span>
+                                      <span className={`text-[10px] font-bold flex items-center gap-1 ${
+                                        gw.envDetails?.clientSecret ? "text-emerald-400" : "text-amber-400"
+                                      }`}>
+                                        {gw.envDetails?.clientSecret ? "✅ Configured in Vercel" : "⚠️ Missing in Vercel"}
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
 

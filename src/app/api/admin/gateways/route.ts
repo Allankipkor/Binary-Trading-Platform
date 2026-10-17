@@ -75,14 +75,29 @@ export async function POST(req: Request) {
     }
 
     if (config !== undefined) {
-      let configString: string;
-      if (typeof config === "object") {
-        const merged = { ...current.parsedConfig, ...config };
-        configString = JSON.stringify(merged);
-      } else {
-        configString = String(config);
+      const currentCfg = (current.parsedConfig || {}) as Record<string, unknown>;
+      const newCfg = (typeof config === "object" && config !== null ? config : {}) as Record<string, unknown>;
+      
+      // Strict sanitization: never persist private API keys, secrets, or passwords in DB
+      let sanitizedConfig: Record<string, unknown> = {};
+      if (id === "mpesa") {
+        sanitizedConfig = {
+          provider: newCfg.provider ?? currentCfg.provider ?? "gravitypay",
+          usdToKes: newCfg.usdToKes !== undefined ? Number(newCfg.usdToKes) : (currentCfg.usdToKes ?? 130),
+        };
+      } else if (id === "crypto") {
+        sanitizedConfig = {
+          network: "TRC20",
+          autoConfirm: newCfg.autoConfirm !== undefined ? Boolean(newCfg.autoConfirm) : Boolean(currentCfg.autoConfirm),
+        };
+      } else if (id === "card") {
+        sanitizedConfig = {
+          env: newCfg.env === "sandbox" ? "sandbox" : "live",
+          payeeEmail: typeof newCfg.payeeEmail === "string" ? newCfg.payeeEmail.trim() : (currentCfg.payeeEmail ?? ""),
+        };
       }
-      updateData.config = configString;
+
+      updateData.config = JSON.stringify(sanitizedConfig);
     }
 
     await prisma.paymentGateway.upsert({
